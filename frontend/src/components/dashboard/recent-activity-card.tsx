@@ -74,10 +74,7 @@ export function RecentActivityCard() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          The Pulse
-        </CardTitle>
-        <p className="text-base font-semibold text-foreground -mt-1">Recent Activity</p>
+        <CardTitle className="text-base font-semibold text-foreground">Recent Activity</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -111,6 +108,7 @@ export function RecentActivityCard() {
                       <img
                         src={activity.users.avatar_url}
                         alt={actorLabel}
+                        referrerPolicy="no-referrer"
                         className="h-8 w-8 shrink-0 rounded-full object-cover"
                       />
                     ) : (

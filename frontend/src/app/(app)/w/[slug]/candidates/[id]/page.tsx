@@ -7,12 +7,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { PageSpinner } from '@/components/ui/spinner'
 import { ResultView } from '@/components/ui/result-view'
 import { PageHeader } from '@/components/shared/page-header'
-import { CandidateDetail } from '@/components/candidates/candidate-detail'
+import { CandidateAiProfile } from '@/components/candidates/candidate-ai-profile'
 import { ActivityTimeline } from '@/components/activity/activity-timeline'
 import { useCandidate } from '@/lib/queries/candidates'
 import { useWorkspace } from '@/components/providers/workspace-provider'
 import { CAN_WRITE } from '@/lib/utils/constants'
 import { formatFullName } from '@/lib/utils/format'
+import type { CandidateAiProfile as AiProfileType } from '@/lib/types/database'
 
 export default function CandidateDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -23,6 +24,8 @@ export default function CandidateDetailPage() {
 
   if (isLoading) return <PageSpinner />
   if (error || !candidate) return <ResultView status="404" title="Candidate not found" />
+
+  const aiProfile = candidate.ai_profile as AiProfileType | null
 
   return (
     <>
@@ -45,13 +48,17 @@ export default function CandidateDetailPage() {
         }
       />
 
-      <Tabs defaultValue="details">
+      <Tabs defaultValue="profile">
         <TabsList variant="line">
-          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
-        <TabsContent value="details">
-          <CandidateDetail candidate={candidate} />
+        <TabsContent value="profile">
+          <CandidateAiProfile
+            profile={aiProfile ?? { skills: [], job_titles: [], companies: [], education: [], certifications: [], total_years_experience: null, languages: [], location: null, experience: [] }}
+            summary={candidate.ai_summary}
+            candidate={candidate}
+          />
         </TabsContent>
         <TabsContent value="activity">
           <ActivityTimeline entityType="candidates" entityId={id} />

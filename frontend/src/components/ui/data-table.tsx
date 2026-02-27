@@ -11,13 +11,16 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface DataTableColumn<T> {
   key: string
   title: string
   width?: string | number
+  className?: string
+  sortable?: boolean
+  sortKey?: string
   render?: (value: any, record: T, index: number) => React.ReactNode
   dataIndex?: string
 }
@@ -37,7 +40,11 @@ interface DataTableProps<T extends Record<string, any>> {
   loading?: boolean
   pagination?: DataTablePagination | false
   className?: string
+  tableFixed?: boolean
   emptyText?: string
+  sortKey?: string | null
+  sortDir?: 'asc' | 'desc' | null
+  onSort?: (key: string) => void
 }
 
 function getRowKey<T extends Record<string, any>>(
@@ -64,19 +71,44 @@ export function DataTable<T extends Record<string, any>>({
   loading = false,
   pagination,
   className,
+  tableFixed = false,
   emptyText = 'No data',
+  sortKey = null,
+  sortDir = null,
+  onSort,
 }: DataTableProps<T>) {
   return (
     <div className={cn('space-y-3', className)}>
       <div className="rounded-md border">
-        <Table>
+        <Table className={tableFixed ? 'table-fixed' : undefined}>
           <TableHeader>
             <TableRow>
-              {columns.map((col) => (
-                <TableHead key={col.key} style={col.width ? { width: col.width } : undefined}>
-                  {col.title}
-                </TableHead>
-              ))}
+              {columns.map((col) => {
+                const colSortKey = col.sortKey ?? col.key
+                const isActive = col.sortable && sortKey === colSortKey
+                return (
+                  <TableHead key={col.key} style={col.width ? { width: col.width } : undefined} className={col.className}>
+                    {col.sortable && onSort ? (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors -ml-1 px-1 py-0.5 rounded"
+                        onClick={() => onSort(colSortKey)}
+                      >
+                        {col.title}
+                        {isActive && sortDir === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        ) : isActive && sortDir === 'desc' ? (
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />
+                        )}
+                      </button>
+                    ) : (
+                      col.title
+                    )}
+                  </TableHead>
+                )
+              })}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -103,7 +135,7 @@ export function DataTable<T extends Record<string, any>>({
               dataSource.map((record, index) => (
                 <TableRow key={getRowKey(record, rowKey)}>
                   {columns.map((col) => (
-                    <TableCell key={col.key}>
+                    <TableCell key={col.key} className={col.className}>
                       {col.render
                         ? col.render(getCellValue(record, col), record, index)
                         : String(getCellValue(record, col) ?? '')}

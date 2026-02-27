@@ -18,17 +18,17 @@ export default function DashboardPage() {
         {/* Left 25% — Action Center */}
         <div className="lg:col-span-1 space-y-6">
           <TopCandidatesCard />
-          <UpcomingInterviewsCard />
+          <OpenJobsCard />
         </div>
         {/* Center 50% — Analytics Hub */}
         <div className="lg:col-span-2 space-y-6">
           <RecruitmentProgressChart />
           <RecruitmentStatusCard />
         </div>
-        {/* Right 25% — The Pulse + Hiring */}
+        {/* Right 25% — The Pulse */}
         <div className="lg:col-span-1 space-y-6">
           <RecentActivityCard />
-          <OpenJobsCard />
+          <UpcomingInterviewsCard />
         </div>
       </div>
     </div>

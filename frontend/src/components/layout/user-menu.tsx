@@ -25,7 +25,7 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <button className="cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Avatar className="h-8 w-8">
-            {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
+            {avatarUrl && <AvatarImage src={avatarUrl} alt={name} referrerPolicy="no-referrer" />}
             <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
           </Avatar>
         </button>

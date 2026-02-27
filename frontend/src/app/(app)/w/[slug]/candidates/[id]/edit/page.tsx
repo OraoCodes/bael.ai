@@ -10,7 +10,7 @@ import { CandidateForm } from '@/components/candidates/candidate-form'
 import { useCandidate, useUpdateCandidate } from '@/lib/queries/candidates'
 import { useWorkspace } from '@/components/providers/workspace-provider'
 import { formatFullName } from '@/lib/utils/format'
-import type { Candidate } from '@/lib/types/database'
+import type { CandidateFormValues } from '@/components/candidates/candidate-form'
 
 export default function EditCandidatePage() {
   const { id } = useParams<{ id: string }>()
@@ -23,7 +23,7 @@ export default function EditCandidatePage() {
   if (isLoading) return <PageSpinner />
   if (error || !candidate) return <ResultView status="404" title="Candidate not found" />
 
-  const handleSubmit = async (values: Partial<Candidate>) => {
+  const handleSubmit = async (values: CandidateFormValues) => {
     try {
       await updateMutation.mutateAsync({ id, ...values })
       toast.success('Candidate updated')

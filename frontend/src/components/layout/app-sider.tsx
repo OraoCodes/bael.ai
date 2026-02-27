@@ -252,14 +252,14 @@ export function AppSider() {
         {collapsed ? (
           <div className="flex justify-center">
             <Avatar className="h-7 w-7">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={name} referrerPolicy="no-referrer" />}
               <AvatarFallback className="text-[10px]">{getInitials(name)}</AvatarFallback>
             </Avatar>
           </div>
         ) : (
           <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
             <Avatar className="h-7 w-7 shrink-0">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={name} referrerPolicy="no-referrer" />}
               <AvatarFallback className="text-[10px]">{getInitials(name)}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">

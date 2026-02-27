@@ -46,6 +46,39 @@ export interface Invitation {
   created_at: string
 }
 
+export interface CandidateExperience {
+  title: string
+  company: string
+  location: string | null
+  start_date: string | null
+  end_date: string | null // null = "Present"
+}
+
+export interface CandidateEducation {
+  degree: string
+  field: string | null
+  institution: string
+  year: number | null
+}
+
+export interface CandidateCertification {
+  name: string
+  issuer: string | null
+}
+
+export interface CandidateAiProfile {
+  skills: string[]
+  experience: CandidateExperience[]
+  education: CandidateEducation[]
+  certifications: CandidateCertification[]
+  total_years_experience: number | null
+  languages: string[]
+  location: string | null
+  // Deprecated — kept for backward compat with older profiles
+  job_titles?: string[]
+  companies?: string[]
+}
+
 export interface Candidate {
   id: string
   workspace_id: string
@@ -59,6 +92,10 @@ export interface Candidate {
   tags: string[]
   notes: string
   metadata: Record<string, unknown>
+  resume_text: string | null
+  ai_profile: CandidateAiProfile | null
+  ai_summary: string | null
+  resume_path: string | null
   created_by: string
   created_at: string
   updated_at: string

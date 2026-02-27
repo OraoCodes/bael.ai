@@ -1,17 +1,56 @@
 'use client'
 
-import { Mail, Phone, Linkedin, FileText } from 'lucide-react'
+import { useState } from 'react'
+import { Mail, Phone, Linkedin, FileText, Download, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { cn } from '@/lib/utils'
-import type { Candidate } from '@/lib/types/database'
+import { createClient } from '@/lib/supabase/client'
+import type { Candidate, CandidateAiProfile as AiProfileType } from '@/lib/types/database'
 import { formatDate } from '@/lib/utils/format'
 
 interface CandidateDetailProps {
   candidate: Candidate
 }
 
+function ResumeDownloadButton({ path }: { path: string }) {
+  const [loading, setLoading] = useState(false)
+
+  const handleDownload = async () => {
+    setLoading(true)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.storage
+        .from('resumes')
+        .createSignedUrl(path, 60)
+      if (error) throw error
+      window.open(data.signedUrl, '_blank')
+    } catch {
+      console.error('Failed to generate download URL')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleDownload}
+      disabled={loading}
+      className="flex items-center gap-1.5 text-sm text-primary hover:underline disabled:opacity-50"
+    >
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      ) : (
+        <Download className="h-4 w-4 text-muted-foreground" />
+      )}
+      Download Resume
+    </button>
+  )
+}
+
 export function CandidateDetail({ candidate }: CandidateDetailProps) {
+  const aiProfile = candidate.ai_profile as AiProfileType | null
+
   return (
     <Card>
       <CardContent className="pt-6">
@@ -47,7 +86,9 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
               </a>
             </div>
           )}
-          {candidate.resume_url && (
+          {candidate.resume_path ? (
+            <ResumeDownloadButton path={candidate.resume_path} />
+          ) : candidate.resume_url ? (
             <div className="flex items-center gap-2 text-sm">
               <FileText className="h-4 w-4 text-muted-foreground" />
               <a
@@ -59,7 +100,7 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
                 Resume
               </a>
             </div>
-          )}
+          ) : null}
         </div>
 
         <Separator className="my-4" />
@@ -70,6 +111,20 @@ export function CandidateDetail({ candidate }: CandidateDetailProps) {
 
           <dt className="text-muted-foreground">Created</dt>
           <dd>{formatDate(candidate.created_at)}</dd>
+
+          {aiProfile?.total_years_experience !== null && aiProfile?.total_years_experience !== undefined && (
+            <>
+              <dt className="text-muted-foreground">Experience</dt>
+              <dd>{aiProfile.total_years_experience} years</dd>
+            </>
+          )}
+
+          {aiProfile?.location && (
+            <>
+              <dt className="text-muted-foreground">Location</dt>
+              <dd>{aiProfile.location}</dd>
+            </>
+          )}
 
           <dt className="text-muted-foreground">Tags</dt>
           <dd>

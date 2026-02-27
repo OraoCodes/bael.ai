@@ -55,12 +55,7 @@ export function OpenJobsCard() {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Hiring
-            </p>
-            <p className="text-base font-semibold text-foreground -mt-0.5">Open Jobs</p>
-          </div>
+          <p className="text-base font-semibold text-foreground">Open Jobs</p>
           <Link
             href={`${base}/jobs`}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
