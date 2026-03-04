@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -78,14 +79,29 @@ export function InvitationsTable({ data, loading }: InvitationsTableProps) {
       key: 'actions',
       title: '',
       render: (_: unknown, record: InvitationWithInviter) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:text-destructive h-7 text-xs"
-          onClick={() => setConfirmId(record.id)}
-        >
-          Revoke
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              const url = `${window.location.origin}/invite/${record.token}`
+              navigator.clipboard.writeText(url)
+              toast.success('Invite link copied')
+            }}
+          >
+            <Copy className="h-3 w-3 mr-1" />
+            Copy link
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive h-7 text-xs"
+            onClick={() => setConfirmId(record.id)}
+          >
+            Revoke
+          </Button>
+        </div>
       ),
     },
   ]

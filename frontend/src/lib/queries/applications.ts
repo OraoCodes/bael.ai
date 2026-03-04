@@ -9,6 +9,7 @@ export const applicationKeys = {
   byCandidate: (wsId: string, candidateId: string) =>
     [...applicationKeys.all(wsId), 'candidate', candidateId] as const,
   detail: (wsId: string, id: string) => [...applicationKeys.all(wsId), 'detail', id] as const,
+  upcomingInterviews: (wsId: string) => [...applicationKeys.all(wsId), 'upcoming-interviews'] as const,
 }
 
 export function useApplicationsByJob(jobId: string) {
@@ -162,6 +163,78 @@ export function useCreateApplication() {
       queryClient.invalidateQueries({
         queryKey: applicationKeys.byJob(workspaceId, data.job_id),
       })
+    },
+  })
+}
+
+export function useUpdateInterviewDetails() {
+  const { workspaceId } = useWorkspace()
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      interview_type,
+      interview_date,
+      interview_time,
+      interview_location,
+      interview_link,
+      jobId,
+    }: {
+      id: string
+      interview_type: 'in_person' | 'online'
+      interview_date: string
+      interview_time: string
+      interview_location: string
+      interview_link: string | null
+      jobId: string
+    }) => {
+      const { data, error } = await supabase
+        .from('candidate_applications')
+        .update({ interview_type, interview_date, interview_time, interview_location, interview_link })
+        .eq('id', id)
+        .eq('workspace_id', workspaceId)
+        .select()
+        .single()
+      if (error) throw error
+      return { data, jobId }
+    },
+    onSuccess: ({ jobId }) => {
+      queryClient.invalidateQueries({ queryKey: applicationKeys.byJob(workspaceId, jobId) })
+      queryClient.invalidateQueries({ queryKey: applicationKeys.upcomingInterviews(workspaceId) })
+    },
+  })
+}
+
+export function useUpcomingInterviews() {
+  const { workspaceId } = useWorkspace()
+  const supabase = createClient()
+
+  return useQuery({
+    queryKey: applicationKeys.upcomingInterviews(workspaceId),
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0]
+      const { data, error } = await supabase
+        .from('candidate_applications')
+        .select('id, interview_type, interview_date, interview_time, interview_location, interview_link, candidates(first_name, last_name), jobs(title)')
+        .eq('workspace_id', workspaceId)
+        .gte('interview_date', today)
+        .is('deleted_at', null)
+        .order('interview_date', { ascending: true })
+        .order('interview_time', { ascending: true })
+        .limit(60)
+      if (error) throw error
+      return (data as unknown as Array<{
+        id: string
+        interview_type: 'in_person' | 'online' | null
+        interview_date: string
+        interview_time: string
+        interview_location: string | null
+        interview_link: string | null
+        candidates: { first_name: string; last_name: string }
+        jobs: { title: string }
+      }>)
     },
   })
 }

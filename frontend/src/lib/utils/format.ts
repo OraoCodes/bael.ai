@@ -53,6 +53,7 @@ export const ACTIVITY_ACTION_LABELS: Record<string, string> = {
   ai_match_scored: 'ran AI matching on',
   invited: 'invited',
   revoked: 'revoked invitation for',
+  applied: 'applied for',
 }
 
 export function getActivityLabel(action: string): string {

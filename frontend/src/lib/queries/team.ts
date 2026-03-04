@@ -65,6 +65,25 @@ export function useInviteMember() {
         .select()
         .single()
       if (error) throw error
+
+      // Send invitation email (non-fatal — invitation is already created)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        await fetch(
+          `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-email`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session!.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ type: 'invitation', invitation_id: data.id }),
+          }
+        )
+      } catch {
+        // Email delivery failure should not break the invitation flow
+      }
+
       return data
     },
     onSuccess: () => {

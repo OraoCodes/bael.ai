@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -30,7 +31,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { SkillTagInput } from '@/components/jobs/skill-tag-input'
-import type { Job } from '@/lib/types/database'
+import { ApplicationFormBuilder } from '@/components/jobs/application-form-builder'
+import type { Job, ApplicationFormConfig } from '@/lib/types/database'
 import { EMPLOYMENT_TYPES, SENIORITY_LEVELS, WORKPLACE_TYPES, JOB_FUNCTIONS } from '@/lib/utils/constants'
 import { useMembers } from '@/lib/queries/team'
 import { cn } from '@/lib/utils'
@@ -70,6 +72,13 @@ interface JobFormProps {
   submitLabel?: string
 }
 
+const DEFAULT_APP_FORM: ApplicationFormConfig = {
+  fields: [],
+  require_phone: false,
+  require_cover_letter: false,
+  require_resume: true,
+}
+
 export function JobForm({
   initialValues,
   onSubmit,
@@ -77,6 +86,9 @@ export function JobForm({
   submitLabel = 'Save',
 }: JobFormProps) {
   const { data: members } = useMembers()
+  const [applicationForm, setApplicationForm] = useState<ApplicationFormConfig>(
+    initialValues?.application_form ?? DEFAULT_APP_FORM
+  )
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -111,6 +123,7 @@ export function JobForm({
       salary_max: values.salary_max ? Number(values.salary_max) : undefined,
       assigned_to: values.assigned_to || undefined,
       expires_at: values.expires_at || undefined,
+      application_form: applicationForm,
     } as Partial<Job>)
   }
 
@@ -428,6 +441,8 @@ export function JobForm({
             )}
           />
         </div>
+
+        <ApplicationFormBuilder value={applicationForm} onChange={setApplicationForm} />
 
         <Button type="submit" disabled={loading}>
           {loading && (

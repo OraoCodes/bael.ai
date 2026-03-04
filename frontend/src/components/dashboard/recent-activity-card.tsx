@@ -19,6 +19,7 @@ const ACTION_CHIPS: Record<string, ChipStyle> = {
   moved:         { label: 'Moved',     className: 'bg-amber-100 text-amber-700' },
   deleted:       { label: 'Removed',   className: 'bg-red-100 text-red-600' },
   stage_changed: { label: 'Stage',     className: 'bg-amber-100 text-amber-700' },
+  applied:       { label: 'Applied',   className: 'bg-blue-100 text-blue-700' },
 }
 
 const AVATAR_BG: Record<string, string> = {
@@ -28,6 +29,7 @@ const AVATAR_BG: Record<string, string> = {
   moved:         'bg-amber-100 text-amber-700',
   deleted:       'bg-red-100 text-red-600',
   stage_changed: 'bg-amber-100 text-amber-700',
+  applied:       'bg-blue-100 text-blue-700',
 }
 
 function getActorInitials(fullName: string | null | undefined, email: string | undefined): string {
@@ -38,6 +40,11 @@ function getActorInitials(fullName: string | null | undefined, email: string | u
 }
 
 function getActorLabel(activity: ActivityWithActor): string {
+  // For job board applications, use the candidate name from metadata
+  if (activity.action === 'applied') {
+    const meta = activity.metadata as Record<string, unknown>
+    return (meta.candidate_name as string) || 'A candidate'
+  }
   const user = activity.users
   if (!user) return 'System'
   return user.full_name || user.email
@@ -45,6 +52,10 @@ function getActorLabel(activity: ActivityWithActor): string {
 
 function getEntityName(activity: ActivityWithActor): string {
   const meta = activity.metadata as Record<string, unknown>
+  // For job board applications, show the job title
+  if (activity.action === 'applied') {
+    return (meta.job_title as string) || 'a position'
+  }
   switch (activity.entity_type) {
     case 'jobs':
       return (meta.title as string) || 'a job'
@@ -100,7 +111,7 @@ export function RecentActivityCard() {
                 const avatarBg = AVATAR_BG[activity.action] || 'bg-gray-100 text-gray-600'
                 const actorLabel = getActorLabel(activity)
                 const entityName = getEntityName(activity)
-                const initials = getActorInitials(activity.users?.full_name, activity.users?.email)
+                const initials = getActorInitials(actorLabel, activity.users?.email)
 
                 return (
                   <div key={activity.id} className="flex items-start gap-3">

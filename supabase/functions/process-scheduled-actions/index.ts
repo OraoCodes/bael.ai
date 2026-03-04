@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendEmail, buildFollowUpEmail } from "../_shared/email.ts";
 
 /**
  * Cron-triggered Edge Function that processes pending scheduled actions.
@@ -128,15 +129,17 @@ async function processFollowUpEmail(
       throw new Error("Candidate has no email address");
     }
 
-    // TODO: Integrate with email provider (Resend, SendGrid)
-    // await sendEmail({
-    //   to: candidate.email,
-    //   subject: payload.subject as string,
-    //   body: payload.body as string,
-    // });
+    const candidateName = `${candidate.first_name} ${candidate.last_name}`;
+    const { subject, html } = buildFollowUpEmail({
+      candidateName,
+      subject: (payload?.subject as string) || (action.title as string),
+      body: (payload?.body as string) || "",
+    });
+
+    await sendEmail({ to: candidate.email, subject, html });
 
     console.log(
-      `[follow_up_email] Would send to ${candidate.email}: ${payload?.subject || action.title}`
+      `[follow_up_email] Sent to ${candidate.email}: ${subject}`
     );
   }
 }

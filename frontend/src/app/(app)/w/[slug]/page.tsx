@@ -2,7 +2,7 @@
 
 import { WelcomeHeader } from '@/components/dashboard/welcome-header'
 import { StatsRow } from '@/components/dashboard/stats-row'
-import { TopCandidatesCard } from '@/components/dashboard/top-candidates-card'
+import { AiInsightsCard } from '@/components/dashboard/ai-insights-card'
 import { UpcomingInterviewsCard } from '@/components/dashboard/upcoming-interviews-card'
 import { RecruitmentProgressChart } from '@/components/dashboard/recruitment-progress-chart'
 import { RecruitmentStatusCard } from '@/components/dashboard/recruitment-status-card'
@@ -17,7 +17,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         {/* Left 25% — Action Center */}
         <div className="lg:col-span-1 space-y-6">
-          <TopCandidatesCard />
+          <AiInsightsCard />
           <OpenJobsCard />
         </div>
         {/* Center 50% — Analytics Hub */}
@@ -27,8 +27,8 @@ export default function DashboardPage() {
         </div>
         {/* Right 25% — The Pulse */}
         <div className="lg:col-span-1 space-y-6">
-          <RecentActivityCard />
           <UpcomingInterviewsCard />
+          <RecentActivityCard />
         </div>
       </div>
     </div>

@@ -35,7 +35,8 @@ export async function proxy(request: NextRequest) {
   const isPublicRoute =
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth') ||
-    pathname.startsWith('/invite')
+    pathname.startsWith('/invite') ||
+    pathname.startsWith('/jobs')
 
   // Unauthenticated user trying to access protected routes
   if (!user && !isPublicRoute) {

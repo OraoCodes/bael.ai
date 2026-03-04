@@ -121,6 +121,8 @@ export interface Job {
   workplace_type: string | null
   job_function: string | null
   expires_at: string | null
+  slug: string | null
+  application_form: ApplicationFormConfig
   source_type: string
   created_by: string
   created_at: string
@@ -159,6 +161,11 @@ export interface CandidateApplication {
   applied_at: string
   metadata: Record<string, unknown>
   ai_match_score: AiMatchScore | null
+  interview_type: 'in_person' | 'online' | null
+  interview_date: string | null
+  interview_time: string | null
+  interview_location: string | null
+  interview_link: string | null
   created_at: string
   updated_at: string
   deleted_at: string | null
@@ -204,6 +211,9 @@ export interface WorkspaceSettings {
   timezone: string
   features: Record<string, unknown>
   onboarding_completed: boolean
+  public_board_enabled: boolean
+  careers_page_title: string | null
+  careers_page_description: string | null
   created_at: string
   updated_at: string
 }
@@ -217,6 +227,46 @@ export interface RecruiterMetric {
   active_applications: number
   avg_days_to_outcome: number | null
   stagnant_count: number
+}
+
+export interface AiJobSuggestion {
+  id: string
+  workspace_id: string
+  job_id: string
+  candidate_id: string
+  score: number
+  reasoning: string
+  computed_at: string
+  dismissed_at: string | null
+  dismissed_by: string | null
+  created_at: string
+}
+
+// Public job board types
+export interface ApplicationFormField {
+  key: string
+  label: string
+  type: 'text' | 'textarea' | 'url' | 'select' | 'boolean'
+  required: boolean
+  options?: string[]
+}
+
+export interface ApplicationFormConfig {
+  fields: ApplicationFormField[]
+  require_phone: boolean
+  require_cover_letter: boolean
+  require_resume: boolean
+}
+
+export interface ApplicationAnswer {
+  id: string
+  application_id: string
+  workspace_id: string
+  field_key: string
+  field_label: string
+  field_type: string
+  value: string | null
+  created_at: string
 }
 
 // Extended types with joins

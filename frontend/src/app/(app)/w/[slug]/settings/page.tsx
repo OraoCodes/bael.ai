@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
 import { Spinner } from '@/components/ui/spinner'
 import { ConfirmDelete } from '@/components/shared/confirm-delete'
 import { PageHeader } from '@/components/shared/page-header'
@@ -316,6 +317,119 @@ function FeatureSettings() {
   )
 }
 
+function JobBoardSettings() {
+  const { workspace, role } = useWorkspace()
+  const { data: settings, isLoading } = useWorkspaceSettings()
+  const updateSettings = useUpdateWorkspaceSettings()
+  const canEdit = CAN_ADMIN.includes(role)
+  const [copied, setCopied] = useState(false)
+
+  const [boardEnabled, setBoardEnabled] = useState(false)
+  const [careersTitle, setCareersTitle] = useState('')
+  const [careersDescription, setCareersDescription] = useState('')
+
+  useEffect(() => {
+    if (settings) {
+      setBoardEnabled(settings.public_board_enabled ?? false)
+      setCareersTitle(settings.careers_page_title ?? '')
+      setCareersDescription(settings.careers_page_description ?? '')
+    }
+  }, [settings])
+
+  if (isLoading) return <Spinner />
+
+  const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/jobs/${workspace.slug}`
+
+  const handleSave = async () => {
+    try {
+      await updateSettings.mutateAsync({
+        public_board_enabled: boardEnabled,
+        careers_page_title: careersTitle || null,
+        careers_page_description: careersDescription || null,
+      })
+      toast.success('Job board settings saved')
+    } catch { toast.error('Failed to save') }
+  }
+
+  const copyUrl = () => {
+    navigator.clipboard.writeText(publicUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="space-y-6 max-w-[600px]">
+      <Card>
+        <CardHeader>
+          <CardTitle>Public Job Board</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Enable Public Job Board</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Allow anyone to view your open positions and apply
+              </p>
+            </div>
+            <Switch
+              checked={boardEnabled}
+              onCheckedChange={setBoardEnabled}
+              disabled={!canEdit}
+            />
+          </div>
+
+          {boardEnabled && (
+            <>
+              <div className="space-y-2">
+                <Label>Public URL</Label>
+                <div className="flex items-center gap-2">
+                  <Input value={publicUrl} readOnly className="text-xs" />
+                  <Button variant="outline" size="sm" onClick={copyUrl}>
+                    <Copy className="h-3.5 w-3.5 mr-1" />
+                    {copied ? 'Copied' : 'Copy'}
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Careers Page Title</Label>
+                <Input
+                  value={careersTitle}
+                  onChange={(e) => setCareersTitle(e.target.value)}
+                  placeholder={`Join ${workspace.name}`}
+                  disabled={!canEdit}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Careers Page Description</Label>
+                <Textarea
+                  value={careersDescription}
+                  onChange={(e) => setCareersDescription(e.target.value)}
+                  placeholder="We're on a mission to..."
+                  rows={3}
+                  disabled={!canEdit}
+                />
+              </div>
+            </>
+          )}
+
+          {canEdit && (
+            <Button onClick={handleSave} disabled={updateSettings.isPending}>
+              {updateSettings.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   return (
     <>
@@ -324,6 +438,7 @@ export default function SettingsPage() {
         <TabsList variant="line">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline Stages</TabsTrigger>
+          <TabsTrigger value="job-board">Job Board</TabsTrigger>
           <TabsTrigger value="features">Features</TabsTrigger>
         </TabsList>
         <TabsContent value="general">
@@ -331,6 +446,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="pipeline">
           <PipelineSettings />
+        </TabsContent>
+        <TabsContent value="job-board">
+          <JobBoardSettings />
         </TabsContent>
         <TabsContent value="features">
           <FeatureSettings />

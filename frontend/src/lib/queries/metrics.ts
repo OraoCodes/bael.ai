@@ -7,7 +7,6 @@ export const metricsKeys = {
   all: (wsId: string) => ['metrics', wsId] as const,
   recruiterMetrics: (wsId: string) => [...metricsKeys.all(wsId), 'recruiters'] as const,
   dashboardStats: (wsId: string) => [...metricsKeys.all(wsId), 'dashboard'] as const,
-  topCandidates: (wsId: string) => [...metricsKeys.all(wsId), 'topCandidates'] as const,
 }
 
 export function useRecruiterMetrics() {
@@ -89,30 +88,3 @@ export function useDashboardStats() {
   })
 }
 
-export function useTopCandidates() {
-  const { workspaceId } = useWorkspace()
-  const supabase = createClient()
-
-  return useQuery({
-    queryKey: metricsKeys.topCandidates(workspaceId),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('candidate_applications')
-        .select('id, ai_match_score, candidates!inner(id, first_name, last_name), jobs!inner(id, title)')
-        .eq('workspace_id', workspaceId)
-        .is('deleted_at', null)
-        .not('ai_match_score', 'is', null)
-        .order('ai_match_score->overall_score', { ascending: false })
-        .limit(3)
-
-      if (error) throw error
-
-      return (data || []).map((app: any) => ({
-        id: app.id,
-        name: app.candidates ? `${app.candidates.first_name} ${app.candidates.last_name}`.trim() : 'Unknown',
-        score: Math.round((app.ai_match_score as any)?.overall_score ?? 0),
-        jobTitle: app.jobs?.title || null,
-      }))
-    },
-  })
-}

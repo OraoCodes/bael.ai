@@ -37,7 +37,7 @@ const FUNCTION_ICONS: Record<string, React.ElementType> = {
 }
 
 function isNew(createdAt: string): boolean {
-  return Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000
+  return Date.now() - new Date(createdAt).getTime() < 48 * 60 * 60 * 1000
 }
 
 export function OpenJobsCard() {

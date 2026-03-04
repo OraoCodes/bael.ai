@@ -40,10 +40,15 @@ export function CreateJobModal() {
 
   return (
     <>
-      <Button onClick={handleOpen}>
-        <Plus className="mr-2 h-4 w-4" />
+      <button
+        onClick={handleOpen}
+        className="inline-flex items-center gap-2.5 rounded-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-[13.5px] font-semibold tracking-[-0.01em] px-5 py-2 transition-colors duration-150 shadow-[0_2px_10px_rgba(37,99,235,0.35)]"
+      >
+        <span className="flex items-center justify-center h-5 w-5 rounded-full bg-blue-500">
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+        </span>
         Create new job
-      </Button>
+      </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
