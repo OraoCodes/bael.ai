@@ -120,7 +120,22 @@ serve(async (req) => {
 
     if (memberError) throw memberError;
 
-    // 5. Mark invitation as accepted
+    // 5. Log "member_joined" activity
+    await supabaseAdmin.from("activities").insert({
+      workspace_id: invitation.workspace_id,
+      actor_id: user.id,
+      entity_type: "workspace_memberships",
+      entity_id: invitation.workspace_id,
+      action: "member_joined",
+      metadata: {
+        email: user.email,
+        name: user.user_metadata?.full_name || user.email,
+        role: invitation.role,
+        invitation_id: invitation.id,
+      },
+    });
+
+    // 6. Mark invitation as accepted
     const { error: updateError } = await supabaseAdmin
       .from("invitations")
       .update({ status: "accepted", accepted_at: new Date().toISOString() })

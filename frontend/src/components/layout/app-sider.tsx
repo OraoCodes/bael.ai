@@ -57,13 +57,18 @@ export function AppSider() {
   const { data: workspaces } = useQuery({
     queryKey: ['my-workspaces'],
     queryFn: async () => {
+      const { data: { user: me } } = await supabase.auth.getUser()
       const { data } = await supabase
         .from('workspace_memberships')
-        .select('workspace_id, workspaces(id, name, slug)')
+        .select('workspace_id, workspaces!inner(id, name, slug, deleted_at)')
+        .eq('user_id', me!.id)
+        .is('workspaces.deleted_at', null)
+      const seen = new Set<string>()
       const result: { id: string; name: string; slug: string }[] = []
       for (const m of data || []) {
         const ws = m.workspaces
-        if (ws && !Array.isArray(ws) && 'id' in ws) {
+        if (ws && !Array.isArray(ws) && 'id' in ws && !seen.has(ws.id)) {
+          seen.add(ws.id)
           result.push(ws as { id: string; name: string; slug: string })
         }
       }

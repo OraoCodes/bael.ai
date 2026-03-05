@@ -17,6 +17,7 @@ const ACTION_CHIPS: Record<string, ChipStyle> = {
   applied:                { label: 'Applied',   className: 'bg-blue-100 text-blue-700' },
   stage_changed:          { label: 'Stage',     className: 'bg-amber-100 text-amber-700' },
   moved:                  { label: 'Stage',     className: 'bg-amber-100 text-amber-700' },
+  member_joined:          { label: 'Joined',    className: 'bg-emerald-100 text-emerald-700' },
 }
 
 const AVATAR_BG: Record<string, string> = {
@@ -28,6 +29,7 @@ const AVATAR_BG: Record<string, string> = {
   stage_changed: 'bg-amber-100 text-amber-700',
   applied:       'bg-blue-100 text-blue-700',
   joined:        'bg-emerald-100 text-emerald-700',
+  member_joined: 'bg-emerald-100 text-emerald-700',
   left:          'bg-zinc-100 text-zinc-600',
   invited:       'bg-violet-100 text-violet-700',
 }
@@ -46,6 +48,7 @@ function getActivitySentence(activity: ActivityWithActor): string {
 
   switch (key) {
     case 'workspace_memberships:created':
+    case 'workspace_memberships:member_joined':
       return `${actor} joined the workspace`
     case 'workspace_memberships:deleted':
       return `${actor} left the workspace`
