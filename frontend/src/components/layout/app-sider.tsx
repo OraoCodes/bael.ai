@@ -19,7 +19,6 @@ import {
   ChevronsUpDown,
   Check,
   Building2,
-  MessageSquare,
   Bell,
   LogOut,
 } from 'lucide-react'
@@ -72,27 +71,9 @@ export function AppSider() {
     },
   })
 
-  const { data: pendingCount } = useQuery({
-    queryKey: ['pending-actions-count', workspace.id],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from('scheduled_actions')
-        .select('id', { count: 'exact', head: true })
-        .eq('workspace_id', workspace.id)
-        .eq('status', 'pending')
-      return count ?? 0
-    },
-  })
-
   const hasMultiple = (workspaces?.length ?? 0) > 1
 
   const profileLinks = [
-    {
-      icon: MessageSquare,
-      label: 'Messages',
-      href: `${base}/actions`,
-      badge: pendingCount && pendingCount > 0 ? pendingCount : null,
-    },
     {
       icon: Bell,
       label: 'Notifications',
@@ -203,71 +184,76 @@ export function AppSider() {
         })}
       </nav>
 
-      {/* Profile section */}
-      <div className="border-t border-border py-3">
-        {!collapsed && (
-          <p className="mb-1 px-4 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Profile
-          </p>
-        )}
-        {profileLinks.map(({ icon: Icon, label, href, badge }) => {
-          const isActive = pathname.startsWith(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'flex items-center gap-3 mx-2 px-2 py-2 rounded-md text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              {!collapsed && (
-                <>
-                  <span className="flex-1">{label}</span>
-                  {badge !== null && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-medium text-primary-foreground">
-                      {badge}
-                    </span>
+      {/* Profile section + User card — links revealed on hover */}
+      <div className="group">
+        {/* Profile links: hidden by default, slide in on hover */}
+        <div className="overflow-hidden max-h-0 group-hover:max-h-[300px] transition-all duration-200 ease-in-out">
+          <div className="border-t border-border pt-3 pb-1">
+            {!collapsed && (
+              <p className="mb-1 px-4 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Profile
+              </p>
+            )}
+            {profileLinks.map(({ icon: Icon, label, href, badge }) => {
+              const isActive = pathname.startsWith(href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    'flex items-center gap-3 mx-2 px-2 py-2 rounded-md text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
-                </>
-              )}
-            </Link>
-          )
-        })}
-        <button
-          onClick={signOut}
-          className="flex w-full items-center gap-3 mx-2 px-2 py-2 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          style={{ width: 'calc(100% - 16px)' }}
-        >
-          <LogOut className="h-4 w-4 flex-shrink-0" />
-          {!collapsed && <span>Log out</span>}
-        </button>
-      </div>
+                >
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1">{label}</span>
+                      {badge !== null && (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-medium text-primary-foreground">
+                          {badge}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </Link>
+              )
+            })}
+            <button
+              onClick={signOut}
+              className="flex w-full items-center gap-3 mx-2 px-2 py-2 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              style={{ width: 'calc(100% - 16px)' }}
+            >
+              <LogOut className="h-4 w-4 flex-shrink-0" />
+              {!collapsed && <span>Log out</span>}
+            </button>
+          </div>
+        </div>
 
-      {/* User card */}
-      <div className="border-t border-border px-3 py-3">
-        {collapsed ? (
-          <div className="flex justify-center">
-            <Avatar className="h-7 w-7">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={name} referrerPolicy="no-referrer" />}
-              <AvatarFallback className="text-[10px]">{getInitials(name)}</AvatarFallback>
-            </Avatar>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
-            <Avatar className="h-7 w-7 shrink-0">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={name} referrerPolicy="no-referrer" />}
-              <AvatarFallback className="text-[10px]">{getInitials(name)}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium truncate">{name}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+        {/* User card — always visible */}
+        <div className="border-t border-border px-3 py-3">
+          {collapsed ? (
+            <div className="flex justify-center">
+              <Avatar className="h-7 w-7">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={name} referrerPolicy="no-referrer" />}
+                <AvatarFallback className="text-[10px]">{getInitials(name)}</AvatarFallback>
+              </Avatar>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
+              <Avatar className="h-7 w-7 shrink-0">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={name} referrerPolicy="no-referrer" />}
+                <AvatarFallback className="text-[10px]">{getInitials(name)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{name}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Collapse toggle */}

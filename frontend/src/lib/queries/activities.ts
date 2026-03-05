@@ -33,6 +33,9 @@ export function useRecentActivity(page: number) {
         .from('activities')
         .select(ACTIVITY_SELECT, { count: 'exact' })
         .eq('workspace_id', workspaceId)
+        .not('entity_type', 'in', '("users","scheduled_actions")')
+        .not('action', 'eq', 'executed')
+        .or('actor_id.not.is.null,action.eq.applied')
         .order('created_at', { ascending: false })
         .range(from, to)
       if (error) throw error
@@ -61,6 +64,9 @@ export function useActivityFeed(filters: {
         .from('activities')
         .select(ACTIVITY_SELECT)
         .eq('workspace_id', workspaceId)
+        .not('entity_type', 'in', '("users","scheduled_actions")')
+        .not('action', 'eq', 'executed')
+        .or('actor_id.not.is.null,action.eq.applied')
         .order('created_at', { ascending: false })
         .range(from, to)
 

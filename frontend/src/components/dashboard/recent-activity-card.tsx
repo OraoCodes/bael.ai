@@ -6,20 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
 import { useRecentActivity, type ActivityWithActor } from '@/lib/queries/activities'
-import { formatRelative, getActivityLabel } from '@/lib/utils/format'
+import { formatRelative } from '@/lib/utils/format'
 
 const PAGE_SIZE = 5
 
 type ChipStyle = { label: string; className: string }
 
 const ACTION_CHIPS: Record<string, ChipStyle> = {
-  ai_scored:     { label: 'AI Match',  className: 'bg-purple-100 text-purple-700' },
-  created:       { label: 'New',       className: 'bg-emerald-100 text-emerald-700' },
-  updated:       { label: 'Updated',   className: 'bg-blue-100 text-blue-700' },
-  moved:         { label: 'Moved',     className: 'bg-amber-100 text-amber-700' },
-  deleted:       { label: 'Removed',   className: 'bg-red-100 text-red-600' },
-  stage_changed: { label: 'Stage',     className: 'bg-amber-100 text-amber-700' },
-  applied:       { label: 'Applied',   className: 'bg-blue-100 text-blue-700' },
+  ai_scored:              { label: 'AI Match',  className: 'bg-purple-100 text-purple-700' },
+  applied:                { label: 'Applied',   className: 'bg-blue-100 text-blue-700' },
+  stage_changed:          { label: 'Stage',     className: 'bg-amber-100 text-amber-700' },
+  moved:                  { label: 'Stage',     className: 'bg-amber-100 text-amber-700' },
 }
 
 const AVATAR_BG: Record<string, string> = {
@@ -30,46 +27,63 @@ const AVATAR_BG: Record<string, string> = {
   deleted:       'bg-red-100 text-red-600',
   stage_changed: 'bg-amber-100 text-amber-700',
   applied:       'bg-blue-100 text-blue-700',
+  joined:        'bg-emerald-100 text-emerald-700',
+  left:          'bg-zinc-100 text-zinc-600',
+  invited:       'bg-violet-100 text-violet-700',
 }
 
-function getActorInitials(fullName: string | null | undefined, email: string | undefined): string {
-  const name = fullName || email || ''
+function getActorInitials(name: string): string {
   const parts = name.trim().split(/\s+/)
   if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
   return parts[0]?.[0]?.toUpperCase() || '?'
 }
 
-function getActorLabel(activity: ActivityWithActor): string {
-  // For job board applications, use the candidate name from metadata
-  if (activity.action === 'applied') {
-    const meta = activity.metadata as Record<string, unknown>
-    return (meta.candidate_name as string) || 'A candidate'
-  }
-  const user = activity.users
-  if (!user) return 'System'
-  return user.full_name || user.email
-}
-
-function getEntityName(activity: ActivityWithActor): string {
+function getActivitySentence(activity: ActivityWithActor): string {
   const meta = activity.metadata as Record<string, unknown>
-  // For job board applications, show the job title
-  if (activity.action === 'applied') {
-    return (meta.job_title as string) || 'a position'
-  }
-  switch (activity.entity_type) {
-    case 'jobs':
-      return (meta.title as string) || 'a job'
-    case 'candidates': {
-      const first = (meta.first_name as string) || ''
-      const last = (meta.last_name as string) || ''
-      return `${first} ${last}`.trim() || 'a candidate'
+  const actor = activity.users?.full_name || activity.users?.email || 'Someone'
+
+  const key = `${activity.entity_type}:${activity.action}`
+
+  switch (key) {
+    case 'workspace_memberships:created':
+      return `${actor} joined the workspace`
+    case 'workspace_memberships:deleted':
+      return `${actor} left the workspace`
+    case 'invitations:created':
+    case 'invitations:invited':
+      return `${actor} invited ${(meta.email as string) || 'someone'} to the workspace`
+    case 'invitations:revoked':
+      return `${actor} revoked the invitation for ${(meta.email as string) || 'a user'}`
+    case 'candidates:created': {
+      const name = `${meta.first_name || ''} ${meta.last_name || ''}`.trim() || 'a candidate'
+      return `${actor} added ${name} as a candidate`
     }
-    case 'invitations':
-      return (meta.email as string) || 'a user'
-    case 'candidate_applications':
-      return 'an application'
+    case 'candidates:updated': {
+      const name = `${meta.first_name || ''} ${meta.last_name || ''}`.trim() || 'a candidate'
+      return `${actor} updated ${name}`
+    }
+    case 'candidates:deleted': {
+      const name = `${meta.first_name || ''} ${meta.last_name || ''}`.trim() || 'a candidate'
+      return `${actor} removed ${name}`
+    }
+    case 'jobs:created':
+      return `${actor} posted a new job — ${(meta.title as string) || 'untitled'}`
+    case 'jobs:updated':
+      return `${actor} updated job — ${(meta.title as string) || 'a job'}`
+    case 'jobs:deleted':
+      return `${actor} removed job — ${(meta.title as string) || 'a job'}`
+    case 'candidate_applications:stage_changed':
+    case 'candidate_applications:moved':
+      return `${actor} moved a candidate to a new stage`
+    case 'candidate_applications:created':
+      return `${actor} added a candidate to a pipeline`
     default:
-      return activity.entity_type.replace(/_/g, ' ')
+      if (activity.action === 'applied') {
+        const candidateName = (meta.candidate_name as string) || 'A candidate'
+        const jobTitle = (meta.job_title as string) || 'a position'
+        return `${candidateName} applied for ${jobTitle}`
+      }
+      return `${actor} ${activity.action.replace(/_/g, ' ')} ${activity.entity_type.replace(/_/g, ' ')}`
   }
 }
 
@@ -109,16 +123,16 @@ export function RecentActivityCard() {
               {activities.map((activity) => {
                 const chip = ACTION_CHIPS[activity.action]
                 const avatarBg = AVATAR_BG[activity.action] || 'bg-gray-100 text-gray-600'
-                const actorLabel = getActorLabel(activity)
-                const entityName = getEntityName(activity)
-                const initials = getActorInitials(actorLabel, activity.users?.email)
+                const actorName = activity.users?.full_name || activity.users?.email || 'Someone'
+                const sentence = getActivitySentence(activity)
+                const initials = getActorInitials(actorName)
 
                 return (
                   <div key={activity.id} className="flex items-start gap-3">
                     {activity.users?.avatar_url ? (
                       <img
                         src={activity.users.avatar_url}
-                        alt={actorLabel}
+                        alt={actorName}
                         referrerPolicy="no-referrer"
                         className="h-8 w-8 shrink-0 rounded-full object-cover"
                       />
@@ -129,10 +143,8 @@ export function RecentActivityCard() {
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs leading-snug">
-                          <span className="font-semibold">{actorLabel}</span>{' '}
-                          <span className="text-muted-foreground">{getActivityLabel(activity.action)}</span>{' '}
-                          <span className="font-medium text-foreground">{entityName}</span>
+                        <p className="text-xs leading-snug text-muted-foreground">
+                          {sentence}
                         </p>
                         <span className="shrink-0 text-[10px] text-muted-foreground whitespace-nowrap">
                           {formatRelative(activity.created_at)}
