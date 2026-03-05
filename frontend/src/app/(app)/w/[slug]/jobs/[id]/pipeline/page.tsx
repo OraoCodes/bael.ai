@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PageSpinner } from '@/components/ui/spinner'
 import { ResultView } from '@/components/ui/result-view'
@@ -38,6 +39,8 @@ export default function PipelinePage() {
   const { workspace, role } = useWorkspace()
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [candidateId, setCandidateId] = useState<string>('')
+  const [stageId, setStageId] = useState<string>('')
+  const [searchQuery, setSearchQuery] = useState('')
   const base = `/w/${workspace.slug}`
 
   const { data: job, isLoading: jobLoading } = useJob(jobId)
@@ -48,13 +51,21 @@ export default function PipelinePage() {
 
   const isLoading = jobLoading || stagesLoading || appsLoading
 
+  const existingCandidateIds = new Set((applications || []).map((a) => a.candidate_id))
+  const availableCandidates = useMemo(() => {
+    const candidates = (candidatesData?.data || []).filter(
+      (c) => !existingCandidateIds.has(c.id)
+    )
+    if (!searchQuery.trim()) return candidates
+    const q = searchQuery.toLowerCase()
+    return candidates.filter((c) =>
+      `${c.first_name} ${c.last_name}`.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q)
+    )
+  }, [candidatesData?.data, existingCandidateIds, searchQuery])
+
   if (isLoading) return <PageSpinner />
   if (!job) return <ResultView status="404" title="Job not found" />
-
-  const existingCandidateIds = new Set((applications || []).map((a) => a.candidate_id))
-  const availableCandidates = (candidatesData?.data || []).filter(
-    (c) => !existingCandidateIds.has(c.id)
-  )
 
   const handleAddCandidate = async () => {
     if (!candidateId) {
@@ -62,16 +73,15 @@ export default function PipelinePage() {
       return
     }
     try {
-      const firstStage = stages?.[0]
-      if (!firstStage) throw new Error('No pipeline stages found')
+      const selectedStage = stageId || stages?.[0]?.id
+      if (!selectedStage) throw new Error('No pipeline stages found')
       await createApplication.mutateAsync({
         candidate_id: candidateId,
         job_id: jobId,
-        stage_id: firstStage.id,
+        stage_id: selectedStage,
       })
       toast.success('Candidate added to pipeline')
-      setAddModalOpen(false)
-      setCandidateId('')
+      handleCloseModal()
     } catch {
       toast.error('Failed to add candidate')
     }
@@ -80,6 +90,8 @@ export default function PipelinePage() {
   const handleCloseModal = () => {
     setAddModalOpen(false)
     setCandidateId('')
+    setStageId('')
+    setSearchQuery('')
   }
 
   return (
@@ -115,14 +127,35 @@ export default function PipelinePage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="candidate">Candidate</Label>
+              <Input
+                placeholder="Filter by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="mb-2"
+              />
               <Select value={candidateId} onValueChange={setCandidateId}>
                 <SelectTrigger id="candidate">
-                  <SelectValue placeholder="Search candidates..." />
+                  <SelectValue placeholder="Select a candidate..." />
                 </SelectTrigger>
                 <SelectContent>
                   {availableCandidates.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {formatFullName(c.first_name, c.last_name)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="stage">Pipeline Stage</Label>
+              <Select value={stageId} onValueChange={setStageId}>
+                <SelectTrigger id="stage">
+                  <SelectValue placeholder={stages?.[0]?.name ?? 'Select stage...'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(stages || []).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

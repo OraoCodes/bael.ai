@@ -9,6 +9,7 @@ import { ResultView } from '@/components/ui/result-view'
 import { PageHeader } from '@/components/shared/page-header'
 import { CandidateAiProfile } from '@/components/candidates/candidate-ai-profile'
 import { ActivityTimeline } from '@/components/activity/activity-timeline'
+import { CandidateApplicationsTab } from '@/components/candidates/candidate-applications-tab'
 import { useCandidate } from '@/lib/queries/candidates'
 import { useWorkspace } from '@/components/providers/workspace-provider'
 import { CAN_WRITE } from '@/lib/utils/constants'
@@ -51,6 +52,7 @@ export default function CandidateDetailPage() {
       <Tabs defaultValue="profile">
         <TabsList variant="line">
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="applications">Applications</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
@@ -59,6 +61,9 @@ export default function CandidateDetailPage() {
             summary={candidate.ai_summary}
             candidate={candidate}
           />
+        </TabsContent>
+        <TabsContent value="applications">
+          <CandidateApplicationsTab candidateId={id} />
         </TabsContent>
         <TabsContent value="activity">
           <ActivityTimeline entityType="candidates" entityId={id} />

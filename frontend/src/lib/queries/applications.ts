@@ -163,6 +163,9 @@ export function useCreateApplication() {
       queryClient.invalidateQueries({
         queryKey: applicationKeys.byJob(workspaceId, data.job_id),
       })
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.byCandidate(workspaceId, data.candidate_id),
+      })
     },
   })
 }

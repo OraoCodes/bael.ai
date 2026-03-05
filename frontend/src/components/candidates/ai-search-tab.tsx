@@ -42,10 +42,10 @@ function clearRecentSearches() {
 /* ── Suggestion chips ── */
 
 const SUGGESTIONS = [
-  'Senior React developers with TypeScript experience',
-  'Backend engineers with distributed systems background',
-  'Product designers with fintech experience',
-  'ML engineers proficient in Python and PyTorch',
+  { text: 'Senior React developers with TypeScript experience', color: 'border-blue-200 bg-blue-50/70 text-blue-700 hover:border-blue-300 hover:bg-blue-100' },
+  { text: 'Backend engineers with distributed systems background', color: 'border-violet-200 bg-violet-50/70 text-violet-700 hover:border-violet-300 hover:bg-violet-100' },
+  { text: 'Product designers with fintech experience', color: 'border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100' },
+  { text: 'ML engineers proficient in Python and PyTorch', color: 'border-amber-200 bg-amber-50/70 text-amber-700 hover:border-amber-300 hover:bg-amber-100' },
 ]
 
 /* ── Component ── */
@@ -95,8 +95,8 @@ export function AiSearchTab() {
       <div className="mx-auto max-w-2xl">
         {!results && (
           <div className="flex flex-col items-center pt-8 pb-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
-              <Sparkles className="h-6 w-6 text-blue-500" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-500 shadow-lg shadow-blue-200/50">
+              <Sparkles className="h-7 w-7 text-white" />
             </div>
             <h2 className="mt-4 text-xl font-semibold text-foreground">
               Find your ideal candidate
@@ -108,7 +108,7 @@ export function AiSearchTab() {
         )}
 
         {/* Prompt input */}
-        <div className="rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <div className="rounded-xl border border-zinc-200 bg-white shadow-md shadow-zinc-100/80">
           <textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -130,7 +130,7 @@ export function AiSearchTab() {
               type="button"
               onClick={handleSearch}
               disabled={!query.trim() || searchMutation.isPending}
-              className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-[13px] font-semibold text-white shadow-[0_2px_10px_rgba(59,130,246,0.25)] transition-colors hover:bg-blue-600 active:bg-blue-700 disabled:pointer-events-none disabled:opacity-40"
+              className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-violet-500 px-4 py-2 text-[13px] font-semibold text-white shadow-[0_2px_12px_rgba(99,102,241,0.35)] transition-all hover:from-blue-600 hover:to-violet-600 active:from-blue-700 active:to-violet-700 disabled:pointer-events-none disabled:opacity-40"
             >
               {searchMutation.isPending ? (
                 <>
@@ -156,12 +156,12 @@ export function AiSearchTab() {
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
                 <button
-                  key={s}
+                  key={s.text}
                   type="button"
-                  onClick={() => handleChipClick(s)}
-                  className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[12px] text-zinc-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                  onClick={() => handleChipClick(s.text)}
+                  className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${s.color}`}
                 >
-                  {s}
+                  {s.text}
                 </button>
               ))}
             </div>
@@ -190,11 +190,11 @@ export function AiSearchTab() {
                   key={s.timestamp}
                   type="button"
                   onClick={() => handleChipClick(s.query)}
-                  className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-[12px] text-zinc-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                  className="flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50/50 px-3 py-1.5 text-[12px] text-indigo-600 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
                 >
-                  <Search className="h-3 w-3 text-zinc-400" />
+                  <Search className="h-3 w-3 text-indigo-400" />
                   <span className="max-w-[200px] truncate">{s.query}</span>
-                  <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
+                  <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-500">
                     {s.resultCount}
                   </span>
                 </button>
