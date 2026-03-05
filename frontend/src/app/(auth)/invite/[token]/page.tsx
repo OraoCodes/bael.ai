@@ -20,8 +20,8 @@ export default function AcceptInvitePage() {
   const [result, setResult] = useState<{ success: boolean; workspaceId?: string; error?: string } | null>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
       setLoading(false)
     })
   }, [supabase])
@@ -37,10 +37,22 @@ export default function AcceptInvitePage() {
   const handleAccept = async () => {
     setAccepting(true)
     try {
-      const { data, error } = await supabase.functions.invoke('accept-invitation', {
-        body: { token },
-      })
-      if (error) throw error
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/accept-invitation`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ token }),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to accept invitation')
       setResult({ success: true, workspaceId: data.workspace_id })
       toast.success('Invitation accepted!')
       setTimeout(() => router.push('/'), 2000)
