@@ -26,6 +26,14 @@ export default function AcceptInvitePage() {
     })
   }, [supabase])
 
+  // Auto-accept when user lands back here after OAuth
+  useEffect(() => {
+    if (!loading && user && !result) {
+      handleAccept()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user])
+
   const handleAccept = async () => {
     setAccepting(true)
     try {
@@ -47,7 +55,7 @@ export default function AcceptInvitePage() {
     supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/invite/${token}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/invite/${token}`,
       },
     })
   }
