@@ -19,7 +19,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left — Value proposition */}
-      <div className="hidden lg:flex lg:w-[60%] flex-col justify-between bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 text-white p-12">
+      <div className="hidden lg:flex lg:w-[60%] flex-col justify-between bg-primary text-primary-foreground p-12">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">bael.ai</h1>
         </div>
@@ -29,7 +29,7 @@ export default function LoginPage() {
             <h2 className="text-4xl font-bold leading-tight max-w-lg">
               Recruitment should be proactive, not reactive.
             </h2>
-            <p className="text-indigo-200 text-lg max-w-md">
+            <p className="text-primary-foreground/70 text-lg max-w-md">
               Stop losing great candidates to silence. bael.ai keeps every conversation moving forward.
             </p>
           </div>
@@ -41,7 +41,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-lg">No more ghosting</h3>
-                <p className="text-indigo-200 text-sm mt-0.5">
+                <p className="text-primary-foreground/70 text-sm mt-0.5">
                   Automated follow-ups and stagnation alerts keep candidates engaged and your pipeline healthy.
                 </p>
               </div>
@@ -53,7 +53,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-lg">Conversational recruiting</h3>
-                <p className="text-indigo-200 text-sm mt-0.5">
+                <p className="text-primary-foreground/70 text-sm mt-0.5">
                   Create and manage jobs through natural conversation — via Telegram, LinkedIn, or AI chat.
                 </p>
               </div>
@@ -65,7 +65,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-lg">AI-powered matching</h3>
-                <p className="text-indigo-200 text-sm mt-0.5">
+                <p className="text-primary-foreground/70 text-sm mt-0.5">
                   Let AI score and rank your candidates against every open role — instantly.
                 </p>
               </div>
@@ -73,7 +73,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-indigo-300 text-sm">
+        <p className="text-primary-foreground/50 text-sm">
           The future of recruitment is agentic.
         </p>
       </div>
