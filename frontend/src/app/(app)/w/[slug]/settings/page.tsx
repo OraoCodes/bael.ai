@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
-import { Plus, Trash2, ExternalLink, Copy, MessageCircle } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, Copy, MessageCircle, Linkedin } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,6 +20,7 @@ import { useWorkspace } from '@/components/providers/workspace-provider'
 import { useWorkspaceSettings, useUpdateWorkspace, useUpdateWorkspaceSettings } from '@/lib/queries/workspaces'
 import { useStages, useCreateStage, useUpdateStage, useDeleteStage } from '@/lib/queries/pipeline-stages'
 import { useTelegramLink, useGenerateTelegramCode, useUnlinkTelegram } from '@/lib/queries/telegram'
+import { useLinkedInLink, useConnectLinkedIn, useUnlinkLinkedIn } from '@/lib/queries/linkedin'
 import { CAN_ADMIN } from '@/lib/utils/constants'
 import type { PipelineStage } from '@/lib/types/database'
 
@@ -436,11 +437,14 @@ function IntegrationSettings() {
   const { data: link, isLoading } = useTelegramLink()
   const generateCode = useGenerateTelegramCode()
   const unlinkTelegram = useUnlinkTelegram()
+  const { data: linkedinLink, isLoading: linkedinLoading } = useLinkedInLink()
+  const connectLinkedIn = useConnectLinkedIn()
+  const unlinkLinkedIn = useUnlinkLinkedIn()
   const [codeData, setCodeData] = useState<{ code: string; expires_at: string } | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
   const canEdit = CAN_ADMIN.includes(role)
 
-  if (isLoading) return <Spinner />
+  if (isLoading || linkedinLoading) return <Spinner />
 
   const handleGenerateCode = async () => {
     try {
@@ -541,6 +545,80 @@ function IntegrationSettings() {
                     </button>
                   </p>
                 </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Linkedin className="h-5 w-5" />
+            LinkedIn
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {linkedinLink ? (
+            <div className="space-y-4">
+              <div className="rounded-md border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-medium text-green-800">LinkedIn connected</p>
+                {linkedinLink.linkedin_name && (
+                  <p className="text-xs text-green-700 mt-0.5">{linkedinLink.linkedin_name}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Linked {new Date(linkedinLink.linked_at).toLocaleDateString()}
+                </p>
+                {new Date(linkedinLink.token_expires_at) < new Date() && (
+                  <p className="text-xs text-amber-600 mt-1 font-medium">
+                    Token expired — please reconnect
+                  </p>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Share open job posts directly to your LinkedIn profile.
+              </p>
+              {canEdit && (
+                <div className="flex gap-2">
+                  {new Date(linkedinLink.token_expires_at) < new Date() && (
+                    <Button
+                      size="sm"
+                      onClick={() => connectLinkedIn.mutate()}
+                      disabled={connectLinkedIn.isPending}
+                    >
+                      Reconnect
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      unlinkLinkedIn.mutate(undefined, {
+                        onSuccess: () => toast.success('LinkedIn disconnected'),
+                        onError: () => toast.error('Failed to disconnect'),
+                      })
+                    }}
+                    disabled={unlinkLinkedIn.isPending}
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  >
+                    {unlinkLinkedIn.isPending ? 'Disconnecting...' : 'Disconnect LinkedIn'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Connect your LinkedIn account to share job posts to your professional network.
+              </p>
+              {canEdit && (
+                <Button
+                  onClick={() => connectLinkedIn.mutate()}
+                  disabled={connectLinkedIn.isPending}
+                >
+                  <Linkedin className="mr-2 h-4 w-4" />
+                  {connectLinkedIn.isPending ? 'Connecting...' : 'Connect LinkedIn'}
+                </Button>
               )}
             </div>
           )}

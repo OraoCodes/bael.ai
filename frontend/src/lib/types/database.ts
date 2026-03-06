@@ -304,3 +304,25 @@ export interface TelegramLinkCode {
   used_at: string | null
   created_at: string
 }
+
+export interface LinkedInLink {
+  id: string
+  user_id: string
+  workspace_id: string
+  linkedin_profile_id: string
+  linkedin_name: string | null
+  token_expires_at: string
+  linked_at: string
+  unlinked_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface LinkedInShare {
+  id: string
+  workspace_id: string
+  job_id: string
+  shared_by: string
+  linkedin_post_id: string | null
+  shared_at: string
+}

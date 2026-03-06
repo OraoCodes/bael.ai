@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { ExternalLink, Copy, Check } from 'lucide-react'
+import { ExternalLink, Copy, Check, Linkedin, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import type { Job } from '@/lib/types/database'
 import { formatDate, formatSalary } from '@/lib/utils/format'
 import { JobStatusBadge } from './job-status-badge'
 import { useWorkspace } from '@/components/providers/workspace-provider'
+import { useLinkedInLink, useShareJobToLinkedIn } from '@/lib/queries/linkedin'
 
 interface JobDetailProps {
   job: Job
@@ -16,6 +18,8 @@ interface JobDetailProps {
 export function JobDetail({ job }: JobDetailProps) {
   const { workspace } = useWorkspace()
   const [copied, setCopied] = useState(false)
+  const { data: linkedinLink } = useLinkedInLink()
+  const shareToLinkedIn = useShareJobToLinkedIn()
   const publicUrl = job.slug && job.status === 'open'
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/jobs/${workspace.slug}/${job.slug}`
     : null
@@ -60,6 +64,29 @@ export function JobDetail({ job }: JobDetailProps) {
             >
               <ExternalLink className="h-4 w-4" />
             </a>
+            {linkedinLink && (
+              <button
+                onClick={() => {
+                  if (new Date(linkedinLink.token_expires_at) < new Date()) {
+                    toast.error('LinkedIn token expired. Reconnect in Settings > Integrations.')
+                    return
+                  }
+                  shareToLinkedIn.mutate(job.id, {
+                    onSuccess: () => toast.success('Shared to LinkedIn'),
+                    onError: (err) => toast.error(err.message),
+                  })
+                }}
+                disabled={shareToLinkedIn.isPending}
+                className="text-blue-500 hover:text-blue-700 transition-colors disabled:opacity-50"
+                title="Share on LinkedIn"
+              >
+                {shareToLinkedIn.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Linkedin className="h-4 w-4" />
+                )}
+              </button>
+            )}
           </div>
         )}
 

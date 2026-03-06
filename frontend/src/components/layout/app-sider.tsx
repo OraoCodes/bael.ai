@@ -65,11 +65,11 @@ export function AppSider() {
         .is('workspaces.deleted_at', null)
       const seen = new Set<string>()
       const result: { id: string; name: string; slug: string }[] = []
-      for (const m of data || []) {
+      for (const m of (data || []) as unknown as Array<{ workspaces: { id: string; name: string; slug: string } }>) {
         const ws = m.workspaces
-        if (ws && !Array.isArray(ws) && 'id' in ws && !seen.has(ws.id)) {
+        if (ws && !seen.has(ws.id)) {
           seen.add(ws.id)
-          result.push(ws as { id: string; name: string; slug: string })
+          result.push(ws)
         }
       }
       return result
