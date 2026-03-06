@@ -282,3 +282,25 @@ export interface WorkspaceMembershipWithUser extends WorkspaceMembership {
 export interface InvitationWithInviter extends Invitation {
   users: User
 }
+
+export interface TelegramLink {
+  id: string
+  user_id: string
+  workspace_id: string
+  telegram_chat_id: number
+  telegram_username: string | null
+  linked_at: string
+  unlinked_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TelegramLinkCode {
+  id: string
+  user_id: string
+  workspace_id: string
+  code: string
+  expires_at: string
+  used_at: string | null
+  created_at: string
+}

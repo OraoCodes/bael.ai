@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
-import { Plus, Trash2, ExternalLink, Copy } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, Copy, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,6 +19,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { useWorkspace } from '@/components/providers/workspace-provider'
 import { useWorkspaceSettings, useUpdateWorkspace, useUpdateWorkspaceSettings } from '@/lib/queries/workspaces'
 import { useStages, useCreateStage, useUpdateStage, useDeleteStage } from '@/lib/queries/pipeline-stages'
+import { useTelegramLink, useGenerateTelegramCode, useUnlinkTelegram } from '@/lib/queries/telegram'
 import { CAN_ADMIN } from '@/lib/utils/constants'
 import type { PipelineStage } from '@/lib/types/database'
 
@@ -430,6 +431,125 @@ function JobBoardSettings() {
   )
 }
 
+function IntegrationSettings() {
+  const { role } = useWorkspace()
+  const { data: link, isLoading } = useTelegramLink()
+  const generateCode = useGenerateTelegramCode()
+  const unlinkTelegram = useUnlinkTelegram()
+  const [codeData, setCodeData] = useState<{ code: string; expires_at: string } | null>(null)
+  const [codeCopied, setCodeCopied] = useState(false)
+  const canEdit = CAN_ADMIN.includes(role)
+
+  if (isLoading) return <Spinner />
+
+  const handleGenerateCode = async () => {
+    try {
+      const data = await generateCode.mutateAsync()
+      setCodeData(data)
+    } catch {
+      toast.error('Failed to generate code')
+    }
+  }
+
+  const handleCopyCode = () => {
+    if (!codeData) return
+    navigator.clipboard.writeText(codeData.code)
+    setCodeCopied(true)
+    setTimeout(() => setCodeCopied(false), 2000)
+  }
+
+  const handleUnlink = async () => {
+    try {
+      await unlinkTelegram.mutateAsync()
+      setCodeData(null)
+      toast.success('Telegram unlinked')
+    } catch {
+      toast.error('Failed to unlink')
+    }
+  }
+
+  return (
+    <div className="space-y-6 max-w-[600px]">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5" />
+            Telegram Bot
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {link ? (
+            <div className="space-y-4">
+              <div className="rounded-md border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-medium text-green-800">Telegram connected</p>
+                {link.telegram_username && (
+                  <p className="text-xs text-green-700 mt-0.5">@{link.telegram_username}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Linked {new Date(link.linked_at).toLocaleDateString()}
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Send a job description to <strong>@BaelRecruitBot</strong> on Telegram to create a draft.
+                Reply to adjust it.
+              </p>
+              {canEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUnlink}
+                  disabled={unlinkTelegram.isPending}
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  {unlinkTelegram.isPending ? 'Unlinking...' : 'Unlink Telegram'}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Link your Telegram account to create and update job posts by messaging{' '}
+                <strong>@BaelRecruitBot</strong>.
+              </p>
+              <ol className="space-y-1.5 text-sm text-muted-foreground list-decimal list-inside">
+                <li>Click <strong>Generate Code</strong> below</li>
+                <li>Open <strong>@BaelRecruitBot</strong> on Telegram</li>
+                <li>Send the 6-character code to the bot</li>
+              </ol>
+
+              {!codeData ? (
+                canEdit && (
+                  <Button onClick={handleGenerateCode} disabled={generateCode.isPending}>
+                    {generateCode.isPending ? 'Generating...' : 'Generate Code'}
+                  </Button>
+                )
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-md border border-border bg-muted px-4 py-2 font-mono text-2xl tracking-[0.3em] font-bold select-all">
+                      {codeData.code}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleCopyCode}>
+                      <Copy className="h-3.5 w-3.5 mr-1" />
+                      {codeCopied ? 'Copied' : 'Copy'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Expires {new Date(codeData.expires_at).toLocaleTimeString()}.{' '}
+                    <button className="underline hover:no-underline" onClick={handleGenerateCode}>
+                      Generate new code
+                    </button>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   return (
     <>
@@ -440,6 +560,7 @@ export default function SettingsPage() {
           <TabsTrigger value="pipeline">Pipeline Stages</TabsTrigger>
           <TabsTrigger value="job-board">Job Board</TabsTrigger>
           <TabsTrigger value="features">Features</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
         </TabsList>
         <TabsContent value="general">
           <GeneralSettings />
@@ -452,6 +573,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="features">
           <FeatureSettings />
+        </TabsContent>
+        <TabsContent value="integrations">
+          <IntegrationSettings />
         </TabsContent>
       </Tabs>
     </>
