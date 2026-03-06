@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
-import { Plus, Trash2, ExternalLink, Copy, MessageCircle, Linkedin } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, Copy, MessageCircle, Linkedin, Smartphone } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -515,28 +516,52 @@ function IntegrationSettings() {
                 Link your Telegram account to create and update job posts by messaging{' '}
                 <strong>@BaelRecruitBot</strong>.
               </p>
-              <ol className="space-y-1.5 text-sm text-muted-foreground list-decimal list-inside">
-                <li>Click <strong>Generate Code</strong> below</li>
-                <li>Open <strong>@BaelRecruitBot</strong> on Telegram</li>
-                <li>Send the 6-character code to the bot</li>
-              </ol>
-
               {!codeData ? (
-                canEdit && (
-                  <Button onClick={handleGenerateCode} disabled={generateCode.isPending}>
-                    {generateCode.isPending ? 'Generating...' : 'Generate Code'}
-                  </Button>
-                )
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-md border border-border bg-muted px-4 py-2 font-mono text-2xl tracking-[0.3em] font-bold select-all">
-                      {codeData.code}
-                    </div>
-                    <Button variant="outline" size="sm" onClick={handleCopyCode}>
-                      <Copy className="h-3.5 w-3.5 mr-1" />
-                      {codeCopied ? 'Copied' : 'Copy'}
+                <>
+                  <ol className="space-y-1.5 text-sm text-muted-foreground list-decimal list-inside">
+                    <li>Click <strong>Generate Code</strong> below</li>
+                    <li>Scan the QR code or open <strong>@BaelRecruitBot</strong> on Telegram</li>
+                    <li>The bot will link automatically</li>
+                  </ol>
+                  {canEdit && (
+                    <Button onClick={handleGenerateCode} disabled={generateCode.isPending}>
+                      {generateCode.isPending ? 'Generating...' : 'Generate Code'}
                     </Button>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-5">
+                    <a
+                      href={`https://t.me/BaelRecruitBot?start=${codeData.code}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 rounded-lg border border-border bg-white p-2 hover:shadow-md transition-shadow"
+                    >
+                      <QRCodeSVG
+                        value={`https://t.me/BaelRecruitBot?start=${codeData.code}`}
+                        size={120}
+                        level="M"
+                      />
+                    </a>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-medium mb-1">Scan with your phone</p>
+                        <p className="text-xs text-muted-foreground">
+                          Opens the bot and sends your code automatically
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">or enter manually:</span>
+                        <div className="rounded-md border border-border bg-muted px-3 py-1 font-mono text-lg tracking-[0.3em] font-bold select-all">
+                          {codeData.code}
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleCopyCode}>
+                          <Copy className="h-3.5 w-3.5 mr-1" />
+                          {codeCopied ? 'Copied' : 'Copy'}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Expires {new Date(codeData.expires_at).toLocaleTimeString()}.{' '}
