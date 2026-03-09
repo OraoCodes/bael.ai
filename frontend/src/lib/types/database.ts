@@ -326,3 +326,50 @@ export interface LinkedInShare {
   linkedin_post_id: string | null
   shared_at: string
 }
+
+// Gmail integration
+export type EmailIngestionStatus =
+  | 'processing'
+  | 'created'
+  | 'updated'
+  | 'duplicate_app'
+  | 'no_cv_replied'
+  | 'no_match'
+  | 'failed'
+
+export interface GmailLink {
+  id: string
+  user_id: string
+  workspace_id: string
+  gmail_address: string
+  token_expires_at: string
+  label_id: string | null
+  sync_enabled: boolean
+  last_synced_at: string | null
+  last_error: string | null
+  linked_at: string
+  unlinked_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface EmailIngestionLog {
+  id: string
+  workspace_id: string
+  gmail_link_id: string
+  gmail_message_id: string
+  gmail_thread_id: string | null
+  from_email: string
+  from_name: string | null
+  subject: string | null
+  status: EmailIngestionStatus
+  candidate_id: string | null
+  job_id: string | null
+  application_id: string | null
+  ai_match_confidence: number | null
+  ai_match_reasoning: string | null
+  error_message: string | null
+  metadata: Record<string, unknown>
+  processed_at: string | null
+  created_at: string
+}

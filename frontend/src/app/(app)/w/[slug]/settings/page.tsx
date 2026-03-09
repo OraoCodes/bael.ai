@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
-import { Plus, Trash2, ExternalLink, Copy, MessageCircle, Linkedin, Smartphone } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, Copy, MessageCircle, Linkedin, Smartphone, Mail } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ import { useWorkspaceSettings, useUpdateWorkspace, useUpdateWorkspaceSettings } 
 import { useStages, useCreateStage, useUpdateStage, useDeleteStage } from '@/lib/queries/pipeline-stages'
 import { useTelegramLink, useGenerateTelegramCode, useUnlinkTelegram } from '@/lib/queries/telegram'
 import { useLinkedInLink, useConnectLinkedIn, useUnlinkLinkedIn } from '@/lib/queries/linkedin'
+import { useGmailLink, useConnectGmail, useUnlinkGmail, useToggleGmailSync } from '@/lib/queries/gmail'
 import { CAN_ADMIN } from '@/lib/utils/constants'
 import type { PipelineStage } from '@/lib/types/database'
 
@@ -441,11 +442,15 @@ function IntegrationSettings() {
   const { data: linkedinLink, isLoading: linkedinLoading } = useLinkedInLink()
   const connectLinkedIn = useConnectLinkedIn()
   const unlinkLinkedIn = useUnlinkLinkedIn()
+  const { data: gmailLink, isLoading: gmailLoading } = useGmailLink()
+  const connectGmail = useConnectGmail()
+  const unlinkGmail = useUnlinkGmail()
+  const toggleGmailSync = useToggleGmailSync()
   const [codeData, setCodeData] = useState<{ code: string; expires_at: string } | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
   const canEdit = CAN_ADMIN.includes(role)
 
-  if (isLoading || linkedinLoading) return <Spinner />
+  if (isLoading || linkedinLoading || gmailLoading) return <Spinner />
 
   const handleGenerateCode = async () => {
     try {
@@ -643,6 +648,100 @@ function IntegrationSettings() {
                 >
                   <Linkedin className="mr-2 h-4 w-4" />
                   {connectLinkedIn.isPending ? 'Connecting...' : 'Connect LinkedIn'}
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Gmail Inbox
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {gmailLink ? (
+            <div className="space-y-4">
+              <div className="rounded-md border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-medium text-green-800">Gmail connected</p>
+                <p className="text-xs text-green-700 mt-0.5">{gmailLink.gmail_address}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Linked {new Date(gmailLink.linked_at).toLocaleDateString()}
+                  {gmailLink.last_synced_at && (
+                    <> &middot; Last synced {new Date(gmailLink.last_synced_at).toLocaleString()}</>
+                  )}
+                </p>
+              </div>
+
+              {gmailLink.last_error && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs font-medium text-amber-800">Sync error</p>
+                  <p className="text-xs text-amber-700 mt-0.5">{gmailLink.last_error}</p>
+                  {canEdit && (
+                    <Button
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => connectGmail.mutate()}
+                      disabled={connectGmail.isPending}
+                    >
+                      Reconnect
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Auto-sync</p>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically ingest CVs from incoming emails
+                  </p>
+                </div>
+                <Switch
+                  checked={gmailLink.sync_enabled}
+                  disabled={!canEdit || toggleGmailSync.isPending}
+                  onCheckedChange={(checked) =>
+                    toggleGmailSync.mutate({ linkId: gmailLink.id, enabled: checked })
+                  }
+                />
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Emails with PDF attachments are parsed automatically. Candidates are matched to open jobs and added to the pipeline.
+              </p>
+
+              {canEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    unlinkGmail.mutate(undefined, {
+                      onSuccess: () => toast.success('Gmail disconnected'),
+                      onError: () => toast.error('Failed to disconnect'),
+                    })
+                  }}
+                  disabled={unlinkGmail.isPending}
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  {unlinkGmail.isPending ? 'Disconnecting...' : 'Disconnect Gmail'}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Connect your Gmail inbox to automatically ingest candidate CVs from incoming emails. When someone sends a resume to your inbox, the system parses it and adds the candidate to the right job pipeline.
+              </p>
+              {canEdit && (
+                <Button
+                  onClick={() => connectGmail.mutate()}
+                  disabled={connectGmail.isPending}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  {connectGmail.isPending ? 'Connecting...' : 'Connect Gmail'}
                 </Button>
               )}
             </div>
