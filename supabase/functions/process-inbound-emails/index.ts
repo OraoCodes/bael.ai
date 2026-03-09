@@ -418,9 +418,38 @@ function shouldSkipEmail(from: string, subject: string): boolean {
   return false;
 }
 
+// ── CORS ─────────────────────────────────────────────────────────────────────
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 // ── Main Handler ──────────────────────────────────────────────────────────────
 
 serve(async (_req) => {
+  if (_req.method === "OPTIONS") {
+    return new Response("ok", { headers: CORS_HEADERS });
+  }
+
+  // Auth guard: accept service role key OR valid user JWT
+  const authHeader = _req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace("Bearer ", "");
+
+  if (!token) {
+    return new Response(JSON.stringify({ error: "Missing authorization" }), { status: 401, headers: CORS_HEADERS });
+  }
+
+  // If it's not the service role key, verify it's a valid user JWT
+  if (token !== SUPABASE_SERVICE_ROLE_KEY) {
+    const authClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401, headers: CORS_HEADERS });
+    }
+  }
+
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   let totalProcessed = 0;
@@ -435,11 +464,11 @@ serve(async (_req) => {
 
     if (fetchError) {
       console.error("Failed to fetch gmail syncs:", fetchError);
-      return new Response(JSON.stringify({ error: fetchError.message }), { status: 500 });
+      return new Response(JSON.stringify({ error: fetchError.message }), { status: 500, headers: CORS_HEADERS });
     }
 
     if (!links || links.length === 0) {
-      return new Response(JSON.stringify({ processed: 0, message: "No syncs due" }), { status: 200 });
+      return new Response(JSON.stringify({ processed: 0, message: "No syncs due" }), { status: 200, headers: CORS_HEADERS });
     }
 
     for (const link of links as GmailLinkRow[]) {
@@ -466,11 +495,11 @@ serve(async (_req) => {
 
     return new Response(
       JSON.stringify({ processed: totalProcessed, failed: totalFailed, links: links.length }),
-      { status: 200 }
+      { status: 200, headers: CORS_HEADERS }
     );
   } catch (err) {
     console.error("process-inbound-emails error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: CORS_HEADERS });
   }
 
   // ── Per-Link Processing ───────────────────────────────────────────────────

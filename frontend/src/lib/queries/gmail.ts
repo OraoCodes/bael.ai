@@ -118,6 +118,43 @@ export function useToggleGmailSync() {
   })
 }
 
+export function useSyncGmailNow() {
+  const { workspaceId } = useWorkspace()
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-inbound-emails`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({}),
+        }
+      )
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Failed to sync emails')
+      }
+      return res.json() as Promise<{ processed: number; failed: number; links: number }>
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: gmailKeys.link(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: gmailKeys.ingestionLogs(workspaceId) })
+    },
+  })
+}
+
 export function useIngestionLogs() {
   const { workspaceId } = useWorkspace()
   const supabase = createClient()

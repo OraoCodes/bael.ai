@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { Upload, X } from 'lucide-react'
 import { Stepper } from '@/components/ui/stepper'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -57,6 +58,9 @@ type FormData = z.infer<typeof schema>
 export default function OnboardPage() {
   const [current, setCurrent] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -70,6 +74,28 @@ export default function OnboardPage() {
       hiring_volume: undefined,
     },
   })
+
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be under 10MB')
+      return
+    }
+    setLogoFile(file)
+    setLogoPreview(URL.createObjectURL(file))
+  }
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null)
+    if (logoPreview) URL.revokeObjectURL(logoPreview)
+    setLogoPreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const handleSubmit = async () => {
     setLoading(true)
@@ -86,6 +112,28 @@ export default function OnboardPage() {
         },
       })
       if (error) throw error
+
+      // Upload logo if selected
+      if (logoFile && data.workspace.id) {
+        const ext = logoFile.name.split('.').pop() || 'png'
+        const path = `${data.workspace.id}/logo.${ext}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('workspace-avatars')
+          .upload(path, logoFile, { upsert: true, contentType: logoFile.type })
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('workspace-avatars')
+            .getPublicUrl(path)
+
+          await supabase
+            .from('workspaces')
+            .update({ logo_url: `${publicUrl}?v=${Date.now()}` })
+            .eq('id', data.workspace.id)
+        }
+      }
+
       toast.success('Workspace created!')
       router.push(`/w/${data.workspace.slug}`)
     } catch (err) {
@@ -106,6 +154,47 @@ export default function OnboardPage() {
   const stepContents = [
     // Step 0: Workspace
     <div key="workspace" className="space-y-4">
+      <div className="space-y-2">
+        <Label>Logo</Label>
+        <div className="flex items-center gap-4">
+          <div className="relative h-16 w-16 shrink-0 rounded-lg border border-border bg-muted flex items-center justify-center overflow-hidden">
+            {logoPreview ? (
+              <img src={logoPreview} alt="Logo preview" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-xl font-semibold text-muted-foreground">
+                {(form.watch('name') || '?').charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="mr-2 h-3.5 w-3.5" />
+                {logoFile ? 'Change' : 'Upload'}
+              </Button>
+              {logoFile && (
+                <Button type="button" variant="ghost" size="sm" onClick={handleRemoveLogo}>
+                  <X className="mr-1 h-3.5 w-3.5" />
+                  Remove
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">PNG, JPG or SVG. Max 10MB.</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleLogoSelect}
+            />
+          </div>
+        </div>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="name">Workspace Name</Label>
         <Input

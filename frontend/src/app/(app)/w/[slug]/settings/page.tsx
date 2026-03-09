@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm, Controller } from 'react-hook-form'
-import { Plus, Trash2, ExternalLink, Copy, MessageCircle, Linkedin, Smartphone, Mail } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, Copy, MessageCircle, Linkedin, Smartphone, Mail, RefreshCw, Upload, X } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,7 @@ import { useWorkspaceSettings, useUpdateWorkspace, useUpdateWorkspaceSettings } 
 import { useStages, useCreateStage, useUpdateStage, useDeleteStage } from '@/lib/queries/pipeline-stages'
 import { useTelegramLink, useGenerateTelegramCode, useUnlinkTelegram } from '@/lib/queries/telegram'
 import { useLinkedInLink, useConnectLinkedIn, useUnlinkLinkedIn } from '@/lib/queries/linkedin'
-import { useGmailLink, useConnectGmail, useUnlinkGmail, useToggleGmailSync } from '@/lib/queries/gmail'
+import { useGmailLink, useConnectGmail, useUnlinkGmail, useToggleGmailSync, useSyncGmailNow } from '@/lib/queries/gmail'
 import { CAN_ADMIN } from '@/lib/utils/constants'
 import type { PipelineStage } from '@/lib/types/database'
 
@@ -47,11 +47,62 @@ function GeneralSettings() {
   const updateWorkspace = useUpdateWorkspace()
   const updateSettings = useUpdateWorkspaceSettings()
   const canEdit = CAN_ADMIN.includes(role)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
 
   const wsForm = useForm({ defaultValues: { name: workspace.name } })
   const settingsForm = useForm({ defaultValues: settings ?? {} })
 
   if (isLoading) return <Spinner />
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be under 10MB')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const supabase = (await import('@/lib/supabase/client')).createClient()
+      const ext = file.name.split('.').pop() || 'png'
+      const path = `${workspace.id}/logo.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('workspace-avatars')
+        .upload(path, file, { upsert: true, contentType: file.type })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('workspace-avatars')
+        .getPublicUrl(path)
+
+      const logoUrl = `${publicUrl}?v=${Date.now()}`
+      await updateWorkspace.mutateAsync({ logo_url: logoUrl })
+      toast.success('Logo updated')
+    } catch {
+      toast.error('Failed to upload logo')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleRemoveAvatar = async () => {
+    try {
+      await updateWorkspace.mutateAsync({ logo_url: null })
+      toast.success('Logo removed')
+    } catch {
+      toast.error('Failed to remove logo')
+    }
+  }
 
   const handleWorkspaceSave = async (values: { name: string }) => {
     try {
@@ -75,6 +126,60 @@ function GeneralSettings() {
         </CardHeader>
         <CardContent>
           <form onSubmit={wsForm.handleSubmit(handleWorkspaceSave)} className="max-w-[400px] space-y-4">
+            <div className="space-y-2">
+              <Label>Logo</Label>
+              <div className="flex items-center gap-4">
+                <div className="relative h-16 w-16 shrink-0 rounded-lg border border-border bg-muted flex items-center justify-center overflow-hidden">
+                  {workspace.logo_url ? (
+                    <img
+                      src={workspace.logo_url}
+                      alt={workspace.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xl font-semibold text-muted-foreground">
+                      {workspace.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                {canEdit && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                      >
+                        <Upload className="mr-2 h-3.5 w-3.5" />
+                        {uploading ? 'Uploading...' : 'Upload'}
+                      </Button>
+                      {workspace.logo_url && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRemoveAvatar}
+                          disabled={updateWorkspace.isPending}
+                        >
+                          <X className="mr-1 h-3.5 w-3.5" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">PNG, JPG or SVG. Max 10MB.</p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="space-y-2">
               <Label>Name</Label>
               <Input {...wsForm.register('name', { required: true })} disabled={!canEdit} />
@@ -446,6 +551,7 @@ function IntegrationSettings() {
   const connectGmail = useConnectGmail()
   const unlinkGmail = useUnlinkGmail()
   const toggleGmailSync = useToggleGmailSync()
+  const syncGmailNow = useSyncGmailNow()
   const [codeData, setCodeData] = useState<{ code: string; expires_at: string } | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
   const canEdit = CAN_ADMIN.includes(role)
@@ -714,20 +820,42 @@ function IntegrationSettings() {
               </p>
 
               {canEdit && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    unlinkGmail.mutate(undefined, {
-                      onSuccess: () => toast.success('Gmail disconnected'),
-                      onError: () => toast.error('Failed to disconnect'),
-                    })
-                  }}
-                  disabled={unlinkGmail.isPending}
-                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                >
-                  {unlinkGmail.isPending ? 'Disconnecting...' : 'Disconnect Gmail'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      syncGmailNow.mutate(undefined, {
+                        onSuccess: (data) => {
+                          if (data.processed > 0) {
+                            toast.success(`Synced ${data.processed} email${data.processed > 1 ? 's' : ''}`)
+                          } else {
+                            toast.info('No new emails to process')
+                          }
+                        },
+                        onError: () => toast.error('Failed to sync emails'),
+                      })
+                    }}
+                    disabled={syncGmailNow.isPending || !gmailLink.sync_enabled}
+                  >
+                    <RefreshCw className={`mr-2 h-4 w-4 ${syncGmailNow.isPending ? 'animate-spin' : ''}`} />
+                    {syncGmailNow.isPending ? 'Syncing...' : 'Sync Now'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      unlinkGmail.mutate(undefined, {
+                        onSuccess: () => toast.success('Gmail disconnected'),
+                        onError: () => toast.error('Failed to disconnect'),
+                      })
+                    }}
+                    disabled={unlinkGmail.isPending}
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  >
+                    {unlinkGmail.isPending ? 'Disconnecting...' : 'Disconnect Gmail'}
+                  </Button>
+                </div>
               )}
             </div>
           ) : (
