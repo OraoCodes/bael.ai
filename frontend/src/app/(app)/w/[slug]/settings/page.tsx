@@ -53,6 +53,10 @@ function GeneralSettings() {
   const wsForm = useForm({ defaultValues: { name: workspace.name } })
   const settingsForm = useForm({ defaultValues: settings ?? {} })
 
+  useEffect(() => {
+    if (settings) settingsForm.reset(settings)
+  }, [settings])
+
   if (isLoading) return <Spinner />
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendEmail, buildWelcomeEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -139,6 +140,19 @@ serve(async (req) => {
       });
 
     if (settingsError) throw settingsError;
+
+    // 5. Send welcome email (non-blocking — don't fail workspace creation)
+    try {
+      const userName = user.user_metadata?.full_name || user.email || "there";
+      const { subject, html } = buildWelcomeEmail({
+        userName,
+        workspaceName: body.name,
+        workspaceSlug: body.slug,
+      });
+      await sendEmail({ to: user.email!, subject, html });
+    } catch (emailErr) {
+      console.error("Welcome email failed (non-fatal):", emailErr);
+    }
 
     return new Response(JSON.stringify({ workspace }), {
       status: 201,

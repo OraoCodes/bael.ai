@@ -433,16 +433,23 @@ serve(async (_req) => {
     return new Response("ok", { headers: CORS_HEADERS });
   }
 
-  // Auth guard: accept service role key OR valid user JWT
+  // Auth guard: accept service role key (cron) OR valid user JWT (manual trigger)
   const authHeader = _req.headers.get("Authorization") ?? "";
-  const token = authHeader.replace("Bearer ", "");
+  const token = authHeader.replace("Bearer ", "").trim();
 
   if (!token) {
     return new Response(JSON.stringify({ error: "Missing authorization" }), { status: 401, headers: CORS_HEADERS });
   }
 
-  // If it's not the service role key, verify it's a valid user JWT
-  if (token !== SUPABASE_SERVICE_ROLE_KEY) {
+  // Check if token is a service_role JWT by decoding the payload
+  let isServiceRole = false;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    isServiceRole = payload.role === "service_role";
+  } catch { /* not a valid JWT — will try user auth below */ }
+
+  if (!isServiceRole) {
+    // Not a service role key — verify it's a valid user JWT
     const authClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: { user }, error: authError } = await authClient.auth.getUser(token);
     if (authError || !user) {

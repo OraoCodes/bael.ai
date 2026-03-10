@@ -129,10 +129,10 @@ serve(async (req) => {
       );
     }
 
-    // Get workspace slug for public URL
+    // Get workspace slug + name for public URL
     const { data: ws } = await supabaseAdmin
       .from("workspaces")
-      .select("slug")
+      .select("slug, name")
       .eq("id", workspace_id)
       .single();
 
@@ -140,22 +140,67 @@ serve(async (req) => {
       ? `${SITE_URL}/jobs/${ws.slug}/${job.slug}`
       : SITE_URL;
 
-    // Build post commentary
-    const details = [
-      job.location ? `📍 ${job.location}` : null,
-      job.employment_type
-        ? `💼 ${job.employment_type.replace("_", " ")}`
-        : null,
-      job.workplace_type
-        ? `🏢 ${job.workplace_type.replace("_", " ")}`
-        : null,
-      job.seniority_level ? `📊 ${job.seniority_level} level` : null,
-      job.skills?.length ? `🔧 ${job.skills.slice(0, 5).join(", ")}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    // Unicode bold helper (Sans-Serif Bold — renders in LinkedIn feed)
+    function toBold(text: string): string {
+      return text.split("").map((c) => {
+        const code = c.charCodeAt(0);
+        if (code >= 65 && code <= 90) return String.fromCodePoint(0x1D5D4 + code - 65); // A-Z
+        if (code >= 97 && code <= 122) return String.fromCodePoint(0x1D5EE + code - 97); // a-z
+        if (code >= 48 && code <= 57)  return String.fromCodePoint(0x1D7EC + code - 48); // 0-9
+        return c;
+      }).join("");
+    }
 
-    const commentary = `🚀 We're hiring: ${job.title}!\n\n${details}\n\nApply now 👇\n${publicUrl}\n\n#hiring #jobs ${job.skills?.slice(0, 3).map((s: string) => `#${s.replace(/[^a-zA-Z0-9]/g, "")}`).join(" ") || ""}`.trim();
+    function titleCase(str: string): string {
+      return str.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    // Build post commentary — compact single-line-break format so
+    // all key info is visible in LinkedIn feed without needing "see more"
+    const detailParts = [
+      job.location          ? `📍 ${job.location}` : null,
+      job.employment_type   ? `💼 ${titleCase(job.employment_type)}` : null,
+      job.workplace_type    ? `🏢 ${titleCase(job.workplace_type)}` : null,
+      job.seniority_level   ? `📊 ${titleCase(job.seniority_level)} level` : null,
+    ].filter(Boolean);
+
+    const detailsLine = detailParts.length ? detailParts.join("  ·  ") : null;
+
+    const skillsLine = job.skills?.length
+      ? `🔧 ${job.skills.slice(0, 6).join(" · ")}`
+      : null;
+
+    // Job title → CamelCase hashtag, e.g. "Senior DevOps Engineer" → #SeniorDevOpsEngineer
+    const titleHashtag = `#${job.title
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .trim()
+      .split(/\s+/)
+      .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join("")}`;
+
+    const skillHashtags = (job.skills?.slice(0, 4) || [])
+      .map((s: string) => `#${s.replace(/[^a-zA-Z0-9]/g, "").replace(/^\w/, (c: string) => c.toUpperCase())}`)
+      .join(" ");
+
+    const hashtags = `#Hiring #OpenToWork ${titleHashtag} ${skillHashtags}`.trim();
+
+    // Single \n — no blank lines — so LinkedIn feed shows all sections without "see more"
+    const commentary = [
+      `🚀 ${toBold(`We're hiring: ${job.title}!`)}`,
+      detailsLine,
+      skillsLine,
+      `👉 ${toBold("Apply now")} — link in card below`,
+      hashtags,
+    ].filter(Boolean).join("\n").trim();
+
+    // Link card description: first 200 chars of job description or a fallback
+    const cardDescription = job.description
+      ? job.description.replace(/\n/g, " ").trim().slice(0, 200)
+      : `Join ${ws?.name || "our team"} as a ${job.title}. Apply now on bael.ai.`;
+
+    const cardTitle = ws?.name
+      ? `${job.title} at ${ws.name}`
+      : job.title;
 
     // Call LinkedIn Posts API
     const linkedinRes = await fetch(
@@ -176,6 +221,13 @@ serve(async (req) => {
             feedDistribution: "MAIN_FEED",
             targetEntities: [],
             thirdPartyDistributionChannels: [],
+          },
+          content: {
+            article: {
+              source: publicUrl,
+              title: cardTitle,
+              description: cardDescription,
+            },
           },
           lifecycleState: "PUBLISHED",
         }),

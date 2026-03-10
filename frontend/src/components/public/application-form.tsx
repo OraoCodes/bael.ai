@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -369,13 +369,40 @@ export function ApplicationForm({
             'Submit Application'
           )}
         </Button>
-        {submitting && resumeFile && (
-          <p className="text-center text-[11px] text-zinc-400">
-            Parsing your resume with AI — this takes around 15 seconds.
-          </p>
-        )}
+        {submitting && resumeFile && <SubmittingStatus />}
       </form>
     </Form>
+  )
+}
+
+const SUBMITTING_STEPS = [
+  'Reading your resume\u2026',
+  'Building your candidate profile\u2026',
+  'Sending your application to the team\u2026',
+]
+
+function SubmittingStatus() {
+  const [index, setIndex] = useState(0)
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    const cycle = setInterval(() => {
+      setVisible(false)
+      setTimeout(() => {
+        setIndex((i) => (i + 1) % SUBMITTING_STEPS.length)
+        setVisible(true)
+      }, 400)
+    }, 3000)
+    return () => clearInterval(cycle)
+  }, [])
+
+  return (
+    <p
+      className="text-center text-[11px] text-zinc-400 transition-opacity duration-400"
+      style={{ opacity: visible ? 1 : 0 }}
+    >
+      {SUBMITTING_STEPS[index]}
+    </p>
   )
 }
 
