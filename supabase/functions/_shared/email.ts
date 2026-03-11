@@ -168,6 +168,157 @@ export function buildWelcomeEmail(params: WelcomeEmailParams) {
   return { subject, html };
 }
 
+// ─── Onboarding Nudge Emails ───────────────────────────────────────
+
+interface OnboardingNudgeParams {
+  userName: string;
+  step: "1h" | "24h" | "72h";
+}
+
+export function buildOnboardingNudgeEmail(params: OnboardingNudgeParams) {
+  const createUrl = `${SITE_URL}/onboarding`;
+  const firstName = params.userName.split(" ")[0] || "there";
+
+  const variants = {
+    "1h": {
+      subject: "You're still the human in Human Resources",
+      emoji: "👋",
+      headline: `Hey ${firstName}, you're almost there`,
+      body: `You signed up — that's the hard part. But right now, resumes are still piling up in your inbox, candidates are slipping through the cracks, and your hiring pipeline lives in a spreadsheet.`,
+      features: [
+        {
+          icon: "📄",
+          title: "AI-powered resume parsing",
+          desc: "Drop a CV, get a structured candidate profile in seconds.",
+        },
+        {
+          icon: "🎯",
+          title: "Smart candidate matching",
+          desc: "AI scores candidates against your job requirements automatically.",
+        },
+        {
+          icon: "📋",
+          title: "Visual hiring pipeline",
+          desc: "Drag-and-drop Kanban board. Know where every candidate stands.",
+        },
+      ],
+      cta: "Create your workspace",
+      ctaNote: "It takes less than 2 minutes.",
+    },
+    "24h": {
+      subject: `${firstName}, your candidates are waiting`,
+      emoji: "⏰",
+      headline: `24 hours ago, you took the first step`,
+      body: `Since you signed up, the average recruiter has spent 3 hours manually screening resumes. You could have had AI do that in minutes. Your workspace is one click away from changing how you hire.`,
+      features: [
+        {
+          icon: "📬",
+          title: "Email-to-pipeline",
+          desc: "Connect Gmail and incoming CVs become candidates automatically.",
+        },
+        {
+          icon: "👥",
+          title: "Team collaboration",
+          desc: "Invite hiring managers. Everyone sees the same pipeline, in real-time.",
+        },
+        {
+          icon: "🔔",
+          title: "Never lose track",
+          desc: "Automated reminders and stagnation alerts keep your process moving.",
+        },
+      ],
+      cta: "Set up your workspace now",
+      ctaNote: "Your first 3 job postings are on us.",
+    },
+    "72h": {
+      subject: `Last call, ${firstName} — we saved your spot`,
+      emoji: "🚀",
+      headline: `We're not giving up on you`,
+      body: `Look, we get it — another tool, another onboarding. But Bael isn't another ATS you'll fight with. It's the one that actually works with you. One workspace. Two minutes. And you'll wonder why you waited.`,
+      features: [
+        {
+          icon: "⚡",
+          title: "2-minute setup",
+          desc: "Name your workspace, and you're in. Default pipeline stages are ready.",
+        },
+        {
+          icon: "🤖",
+          title: "AI that actually helps",
+          desc: "Resume parsing, job matching, candidate scoring — all built in.",
+        },
+        {
+          icon: "🌍",
+          title: "Public careers page",
+          desc: "Post a job and get a shareable careers page instantly.",
+        },
+      ],
+      cta: "Create your workspace — last chance",
+      ctaNote: "After this, we'll stop bugging you. Promise.",
+    },
+  };
+
+  const v = variants[params.step];
+
+  const featuresHtml = v.features
+    .map(
+      (f) => `
+        <tr>
+          <td style="padding:8px 0;vertical-align:top;width:32px">
+            <div style="font-size:20px;line-height:24px">${f.icon}</div>
+          </td>
+          <td style="padding:8px 0 8px 12px">
+            <p style="margin:0;font-size:14px;color:#3f3f46;line-height:1.5"><strong style="color:#18181b">${f.title}</strong> — ${f.desc}</p>
+          </td>
+        </tr>`
+    )
+    .join("");
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 20px">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
+        <!-- Header -->
+        <tr><td style="padding:40px 36px 0;text-align:center">
+          <div style="font-size:40px;margin-bottom:12px">${v.emoji}</div>
+          <h1 style="margin:0 0 12px;font-size:22px;color:#18181b;font-weight:700">${v.headline}</h1>
+          <p style="margin:0;color:#71717a;font-size:15px;line-height:1.6">${v.body}</p>
+        </td></tr>
+        <!-- Features -->
+        <tr><td style="padding:24px 36px 0">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            ${featuresHtml}
+          </table>
+        </td></tr>
+        <!-- CTA -->
+        <tr><td style="padding:28px 36px;text-align:center">
+          <a href="${createUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;font-size:15px;font-weight:600;padding:12px 36px;border-radius:8px;text-decoration:none">${v.cta} →</a>
+          <p style="margin:12px 0 0;color:#a1a1aa;font-size:13px">${v.ctaNote}</p>
+        </td></tr>
+        <!-- Divider -->
+        <tr><td style="padding:0 36px">
+          <div style="border-top:1px solid #e4e4e7"></div>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="padding:20px 36px 32px;text-align:center">
+          <p style="margin:0;color:#a1a1aa;font-size:12px;line-height:1.5">
+            You're receiving this because you signed up for Bael but haven't created a workspace yet.<br>
+            <a href="${SITE_URL}/unsubscribe" style="color:#a1a1aa;text-decoration:underline">Unsubscribe</a>
+          </p>
+        </td></tr>
+      </table>
+      <p style="margin:24px 0 0;color:#a1a1aa;font-size:11px;text-align:center">Bael — Recruitment CRM</p>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  return { subject: v.subject, html };
+}
+
 interface FollowUpEmailParams {
   candidateName: string;
   subject: string;

@@ -141,7 +141,16 @@ serve(async (req) => {
 
     if (settingsError) throw settingsError;
 
-    // 5. Send welcome email (non-blocking — don't fail workspace creation)
+    // 5. Cancel onboarding nudges (user has completed onboarding)
+    try {
+      await supabaseAdmin.rpc("cancel_onboarding_nudges", {
+        p_user_id: user.id,
+      });
+    } catch (nudgeErr) {
+      console.error("Cancel nudges failed (non-fatal):", nudgeErr);
+    }
+
+    // 6. Send welcome email (non-blocking — don't fail workspace creation)
     try {
       const userName = user.user_metadata?.full_name || user.email || "there";
       const { subject, html } = buildWelcomeEmail({

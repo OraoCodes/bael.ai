@@ -96,6 +96,9 @@ export interface Candidate {
   ai_profile: CandidateAiProfile | null
   ai_summary: string | null
   resume_path: string | null
+  experience: CandidateExperience[]
+  education: CandidateEducation[]
+  certifications: CandidateCertification[]
   created_by: string
   created_at: string
   updated_at: string

@@ -236,9 +236,9 @@ export function CandidateForm({
       source: initialValues?.source ?? '',
       notes: initialValues?.notes ?? '',
       tags: initialValues?.tags ?? [],
-      experience: aiData?.experience ?? [],
-      education: aiData?.education ?? [],
-      certifications: aiData?.certifications ?? [],
+      experience: aiData?.experience ?? initialValues?.experience ?? [],
+      education: aiData?.education ?? initialValues?.education ?? [],
+      certifications: aiData?.certifications ?? initialValues?.certifications ?? [],
     },
   })
 
