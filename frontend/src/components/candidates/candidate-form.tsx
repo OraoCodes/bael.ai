@@ -41,21 +41,21 @@ const textareaCls = 'rounded-xl border-zinc-200 bg-zinc-50/40 text-[13px] shadow
 const experienceSchema = z.object({
   title: z.string().min(1, 'Required'),
   company: z.string().min(1, 'Required'),
-  location: z.string().nullable().optional(),
-  start_date: z.string().nullable().optional(),
-  end_date: z.string().nullable().optional(),
+  location: z.string().nullable(),
+  start_date: z.string().nullable(),
+  end_date: z.string().nullable(),
 })
 
 const educationSchema = z.object({
   degree: z.string().min(1, 'Required'),
-  field: z.string().nullable().optional(),
+  field: z.string().nullable(),
   institution: z.string().min(1, 'Required'),
-  year: z.number().nullable().optional(),
+  year: z.number().nullable(),
 })
 
 const certificationSchema = z.object({
   name: z.string().min(1, 'Required'),
-  issuer: z.string().nullable().optional(),
+  issuer: z.string().nullable(),
 })
 
 const schema = z.object({
