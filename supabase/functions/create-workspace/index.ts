@@ -137,6 +137,7 @@ serve(async (req) => {
         hiring_volume: body.hiring_volume || null,
         timezone: body.timezone || "UTC",
         onboarding_completed: true,
+        public_board_enabled: true,
       });
 
     if (settingsError) throw settingsError;
