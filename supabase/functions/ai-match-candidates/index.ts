@@ -93,9 +93,10 @@ serve(async (req) => {
         candidates!inner (
           first_name,
           last_name,
+          ai_summary,
+          ai_profile,
           notes,
-          tags,
-          metadata
+          tags
         )
       `
       )
@@ -153,28 +154,58 @@ serve(async (req) => {
     const candidateSummaries = toScore.map((app) => {
       const candidate = (app as Record<string, unknown>)
         .candidates as Record<string, unknown>;
+      const aiProfile = candidate.ai_profile as Record<string, unknown> | null;
+      const skills = aiProfile?.skills
+        ? (aiProfile.skills as string[]).join(", ")
+        : "";
+      const experience = aiProfile?.experience
+        ? (aiProfile.experience as Array<Record<string, unknown>>)
+            .map(
+              (e) =>
+                `${e.title} at ${e.company}${e.location ? ` (${e.location})` : ""}`
+            )
+            .join("; ")
+        : "";
+      const totalYears = aiProfile?.total_years_experience || "unknown";
+
       return {
         application_id: app.id,
         name: `${candidate.first_name} ${candidate.last_name}`,
-        notes: candidate.notes || "",
+        summary: (candidate.ai_summary as string) || "",
+        skills,
+        experience,
+        total_years: totalYears,
         tags: candidate.tags || [],
-        metadata: candidate.metadata || {},
+        notes: candidate.notes || "",
       };
     });
 
-    const prompt = `You are a recruitment AI assistant. Score each candidate's fit for the following job on a scale of 0.0 to 1.0, and provide a brief reasoning.
+    const prompt = `You are a recruitment AI assistant. Score each candidate's fit for the following job on a scale of 0.0 to 1.0, and provide a brief reasoning (2-3 sentences max).
 
-Job: ${job.title}
+## Job
+Title: ${job.title}
 Department: ${job.department || "N/A"}
 Location: ${job.location || "N/A"}
 Type: ${job.employment_type || "N/A"}
-Description: ${job.description || "No description provided"}
+Description:
+${job.description || "No description provided"}
 
-Candidates:
-${candidateSummaries.map((c, i) => `${i + 1}. ${c.name} — Notes: ${c.notes} Tags: ${JSON.stringify(c.tags)}`).join("\n")}
+## Candidates
+${candidateSummaries
+  .map(
+    (c, i) =>
+      `### ${i + 1}. ${c.name} (application_id: ${c.application_id})
+Summary: ${c.summary || "No summary available"}
+Skills: ${c.skills || "Not specified"}
+Experience: ${c.experience || "Not specified"}
+Total years: ${c.total_years}
+Tags: ${JSON.stringify(c.tags)}
+${c.notes ? `Notes: ${c.notes}` : ""}`
+  )
+  .join("\n\n")}
 
-Respond with a JSON array of objects: [{"application_id": "...", "score": 0.85, "reasoning": "..."}]
-Only output valid JSON, no other text.`;
+Respond with ONLY a JSON array: [{"application_id": "...", "score": 0.85, "reasoning": "..."}]
+No other text.`;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -192,9 +223,9 @@ Only output valid JSON, no other text.`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("LLM API error:", errorText);
+      console.error(`LLM API error (${response.status}):`, errorText);
       return new Response(
-        JSON.stringify({ error: "AI scoring failed" }),
+        JSON.stringify({ error: "AI scoring failed", details: `Anthropic API returned ${response.status}` }),
         {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -211,7 +242,18 @@ Only output valid JSON, no other text.`;
       reasoning: string;
     }>;
     try {
-      scores = JSON.parse(content);
+      // Strip markdown code fences if present
+      let cleaned = content.trim();
+      if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+      }
+      // Find JSON array in response
+      const arrStart = cleaned.indexOf("[");
+      const arrEnd = cleaned.lastIndexOf("]");
+      if (arrStart !== -1 && arrEnd !== -1) {
+        cleaned = cleaned.slice(arrStart, arrEnd + 1);
+      }
+      scores = JSON.parse(cleaned);
     } catch {
       console.error("Failed to parse LLM response:", content);
       return new Response(

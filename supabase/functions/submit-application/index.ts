@@ -344,7 +344,7 @@ serve(async (req) => {
     // ── Verify job is open and public board is enabled ──────────────────────
     const { data: job, error: jobError } = await supabase
       .from("jobs")
-      .select("id, workspace_id, title, status, application_form")
+      .select("id, workspace_id, title, description, status, application_form")
       .eq("id", jobId)
       .eq("status", "open")
       .is("deleted_at", null)
@@ -601,11 +601,79 @@ serve(async (req) => {
       },
     });
 
+    // ── AI: Auto-score candidate against job (non-blocking) ────────────────
+    let aiMatchScore = null;
+    if (aiData) {
+      try {
+        const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+        if (apiKey) {
+          const skills = aiData.skills?.join(", ") || "";
+          const experience = aiData.experience
+            ?.map((e: ExperienceEntry) => `${e.title} at ${e.company}`)
+            .join("; ") || "";
+
+          const scorePrompt = `You are a recruitment AI. Score this candidate's fit for the job on a scale of 0.0 to 1.0 with brief reasoning (2-3 sentences).
+
+Job: ${job.title}
+Description: ${job.description || "No description"}
+
+Candidate: ${firstName} ${lastName}
+Summary: ${aiData.summary || "N/A"}
+Skills: ${skills}
+Experience: ${experience}
+Total years: ${aiData.total_years_experience || "unknown"}
+
+Respond with ONLY JSON: {"score": 0.85, "reasoning": "..."}`;
+
+          const scoreRes = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+              model: "claude-haiku-4-5-20251001",
+              max_tokens: 512,
+              messages: [{ role: "user", content: scorePrompt }],
+            }),
+          });
+
+          if (scoreRes.ok) {
+            const scoreResult = await scoreRes.json();
+            let scoreText = (scoreResult.content?.[0]?.text || "").trim();
+            if (scoreText.startsWith("```")) {
+              scoreText = scoreText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+            }
+            const objStart = scoreText.indexOf("{");
+            const objEnd = scoreText.lastIndexOf("}");
+            if (objStart !== -1 && objEnd !== -1) {
+              scoreText = scoreText.slice(objStart, objEnd + 1);
+            }
+            const parsed = JSON.parse(scoreText);
+            aiMatchScore = {
+              score: parsed.score,
+              reasoning: parsed.reasoning,
+              computed_at: new Date().toISOString(),
+            };
+
+            await supabase
+              .from("candidate_applications")
+              .update({ ai_match_score: aiMatchScore })
+              .eq("id", application.id);
+          }
+        }
+      } catch (scoreErr) {
+        console.error("Auto-scoring failed (non-fatal):", scoreErr);
+      }
+    }
+
     return json({
       success: true,
       application_id: application.id,
       message: "Application submitted successfully",
       ai_parsed: aiData !== null,
+      ai_match_score: aiMatchScore,
     }, 201);
   } catch (error) {
     console.error("submit-application error:", error);
