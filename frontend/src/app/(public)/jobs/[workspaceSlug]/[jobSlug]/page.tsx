@@ -16,9 +16,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const { job, workspace } = data
   const title = `${job.title} at ${workspace.name}`
+  const metaParts = [
+    job.location,
+    job.employment_type?.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+  ].filter(Boolean)
   const description = job.description
     ? job.description.replace(/\n/g, ' ').slice(0, 160)
-    : `Apply for ${job.title} at ${workspace.name}`
+    : `Apply for ${job.title} at ${workspace.name}${metaParts.length ? ` — ${metaParts.join(' · ')}` : ''}`
 
   return {
     title,
@@ -30,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: workspace.name,
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title,
       description,
     },

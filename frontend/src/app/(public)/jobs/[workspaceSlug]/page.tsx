@@ -14,10 +14,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = await fetchWorkspaceBySlug(workspaceSlug)
   if (!data) return { title: 'Job Board' }
 
+  const jobs = await fetchPublicJobs(workspaceSlug)
   const title = data.boardConfig.careers_page_title || `${data.workspace.name} — Careers`
   const description =
     data.boardConfig.careers_page_description ||
-    `View open positions at ${data.workspace.name}`
+    `Explore ${jobs.length} open position${jobs.length !== 1 ? 's' : ''} at ${data.workspace.name}. Find your next role and apply today.`
 
   return {
     title,
@@ -26,6 +27,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       type: 'website',
+      siteName: data.workspace.name,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
     },
   }
 }

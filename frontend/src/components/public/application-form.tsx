@@ -74,6 +74,7 @@ export function ApplicationForm({
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [consentGiven, setConsentGiven] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const config = applicationForm ?? { fields: [], require_phone: false, require_cover_letter: false, require_resume: true }
@@ -111,6 +112,11 @@ export function ApplicationForm({
     // Honeypot check
     if (values.website) return
 
+    if (!consentGiven) {
+      setError('You must accept the data protection terms before submitting')
+      return
+    }
+
     if (config.require_resume && !resumeFile) {
       setError('Resume is required')
       return
@@ -138,6 +144,8 @@ export function ApplicationForm({
       if (values.linkedin_url) formData.append('linkedin_url', values.linkedin_url)
       if (values.cover_letter) formData.append('cover_letter', values.cover_letter)
       if (values.website) formData.append('website', values.website) // honeypot
+      formData.append('consent_given', 'true')
+      formData.append('consent_policy_version', '1.0')
       if (resumeFile) formData.append('resume', resumeFile)
 
       // Custom answers (text-based fields)
@@ -391,6 +399,28 @@ export function ApplicationForm({
             <DynamicField key={field.key} field={field} form={form} />
           )
         )}
+
+        {/* Data protection consent */}
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={consentGiven}
+            onChange={(e) => setConsentGiven(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer shrink-0"
+          />
+          <span className="text-[11px] sm:text-xs text-zinc-500 leading-relaxed">
+            I agree to the{' '}
+            <a
+              href={`/jobs/${workspaceSlug}/data-protection`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-zinc-900 hover:text-zinc-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Terms and Conditions
+            </a>
+          </span>
+        </label>
 
         {/* Error */}
         {error && (

@@ -310,6 +310,8 @@ serve(async (req) => {
     const resumeFile = formData.get("resume") as File | null;
     const customAnswersRaw = formData.get("custom_answers") as string | null;
     const customFileFieldsRaw = formData.get("custom_file_fields") as string | null;
+    const consentGiven = formData.get("consent_given") as string | null;
+    const consentPolicyVersion = (formData.get("consent_policy_version") as string || "1.0").trim();
     const honeypot = formData.get("website") as string | null;
 
     // Honeypot — silent success for bots
@@ -319,6 +321,10 @@ serve(async (req) => {
 
     if (!jobId || !firstName || !lastName || !email) {
       return json({ error: "job_id, first_name, last_name, and email are required" }, 400);
+    }
+
+    if (consentGiven !== "true") {
+      return json({ error: "You must accept the data protection terms before submitting" }, 400);
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -541,6 +547,8 @@ serve(async (req) => {
         candidate_id: candidateId,
         job_id: job.id,
         stage_id: appliedStage.id,
+        consent_given_at: new Date().toISOString(),
+        consent_policy_version: consentPolicyVersion,
         metadata: {
           source: "job_board",
           ...(coverLetter && { cover_letter: coverLetter }),
