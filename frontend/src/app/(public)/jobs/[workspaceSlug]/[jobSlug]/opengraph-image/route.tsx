@@ -9,6 +9,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ workspa
 
   const jobTitle = data?.job.title ?? 'Open Position'
   const companyName = data?.workspace.name ?? 'Company'
+  const logoUrl = data?.workspace.logo_url ?? null
   const location = data?.job.location
   const type = data?.job.employment_type?.replace('_', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
   const skills = data?.job.skills?.slice(0, 5) ?? []
@@ -98,7 +99,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ workspa
             {jobTitle}
           </div>
 
-          {/* Company name */}
+          {/* Company name + logo */}
           <div
             style={{
               marginTop: '14px',
@@ -107,10 +108,26 @@ export async function GET(_req: Request, { params }: { params: Promise<{ workspa
               fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '10px',
             }}
           >
-            at {companyName}
+            at
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={companyName}
+                width={28}
+                height={28}
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '6px',
+                  objectFit: 'cover',
+                  border: '1px solid #e4e4e7',
+                }}
+              />
+            )}
+            {companyName}
           </div>
 
           {/* Meta: location + type */}

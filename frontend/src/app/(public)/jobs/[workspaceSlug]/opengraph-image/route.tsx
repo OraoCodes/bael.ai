@@ -9,6 +9,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ workspa
   const jobs = await fetchPublicJobs(workspaceSlug)
 
   const name = data?.workspace.name ?? 'Careers'
+  const logoUrl = data?.workspace.logo_url ?? null
   const title = data?.boardConfig.careers_page_title || `Join ${name}`
   const jobCount = jobs.length
   const departments = [...new Set(jobs.map((j) => j.department).filter(Boolean))].slice(0, 4) as string[]
@@ -66,23 +67,39 @@ export async function GET(_req: Request, { params }: { params: Promise<{ workspa
             maxWidth: '1000px',
           }}
         >
-          {/* Company initial / logo placeholder */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '72px',
-              height: '72px',
-              borderRadius: '20px',
-              background: '#18181b',
-              color: 'white',
-              fontSize: '32px',
-              fontWeight: 700,
-            }}
-          >
-            {name[0]}
-          </div>
+          {/* Company logo / fallback initial */}
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={name}
+              width={72}
+              height={72}
+              style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: '20px',
+                objectFit: 'cover',
+                border: '1px solid #e4e4e7',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '72px',
+                height: '72px',
+                borderRadius: '20px',
+                background: '#18181b',
+                color: 'white',
+                fontSize: '32px',
+                fontWeight: 700,
+              }}
+            >
+              {name[0]}
+            </div>
+          )}
 
           {/* Title */}
           <div
