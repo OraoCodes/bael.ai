@@ -66,7 +66,7 @@ export default async function JobBoardPage({ params, searchParams }: Props) {
   const employmentTypes = [...new Set(allJobs.map((j) => j.employment_type).filter(Boolean))] as string[]
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:py-12 sm:px-6 lg:px-8">
       <JobBoardHeader
         workspace={workspace}
         title={boardConfig.careers_page_title}
@@ -96,7 +96,7 @@ export default async function JobBoardPage({ params, searchParams }: Props) {
       {/* Job listings */}
       <div className="mt-8 space-y-8">
         {jobs.length === 0 ? (
-          <div className="rounded-xl border border-zinc-200 bg-white px-6 py-16 text-center">
+          <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-12 sm:px-6 sm:py-16 text-center">
             <p className="text-sm text-zinc-500">No open positions at the moment.</p>
             <p className="mt-1 text-xs text-zinc-400">Check back later for new opportunities.</p>
           </div>
@@ -117,7 +117,7 @@ export default async function JobBoardPage({ params, searchParams }: Props) {
       </div>
 
       {/* Footer */}
-      <div className="mt-16 border-t border-zinc-200 pt-6 text-center">
+      <div className="mt-10 sm:mt-16 border-t border-zinc-200 pt-6 text-center">
         <p className="text-xs text-zinc-400">
           Powered by{' '}
           <a href="https://bael.ai" target="_blank" rel="noopener noreferrer" className="font-medium text-zinc-500 hover:text-zinc-700 underline">bael.ai</a>

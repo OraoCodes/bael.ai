@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -70,11 +70,6 @@ export function ApplicationFormBuilder({ value, onChange }: ApplicationFormBuild
   const addPreset = (preset: ApplicationFormField) => {
     if (value.fields.some((f) => f.key === preset.key)) return
     onChange({ ...value, fields: [...value.fields, { ...preset }] })
-  }
-
-  const updateOptions = (index: number, optionsStr: string) => {
-    const options = optionsStr.split(',').map((o) => o.trim()).filter(Boolean)
-    updateField(index, { options })
   }
 
   return (
@@ -186,11 +181,10 @@ export function ApplicationFormBuilder({ value, onChange }: ApplicationFormBuild
                     </button>
                   </div>
                   {(field.type === 'select' || field.type === 'multiselect') && (
-                    <Input
-                      value={(field.options || []).join(', ')}
-                      onChange={(e) => updateOptions(idx, e.target.value)}
+                    <CommaSeparatedInput
+                      values={field.options || []}
+                      onChange={(options) => updateField(idx, { options })}
                       placeholder="Options (comma-separated)"
-                      className="h-8 text-xs ml-6"
                     />
                   )}
                   {field.type === 'file' && (
@@ -231,5 +225,37 @@ export function ApplicationFormBuilder({ value, onChange }: ApplicationFormBuild
         </div>
       )}
     </div>
+  )
+}
+
+function CommaSeparatedInput({
+  values,
+  onChange,
+  placeholder,
+}: {
+  values: string[]
+  onChange: (options: string[]) => void
+  placeholder: string
+}) {
+  const [raw, setRaw] = useState(values.join(', '))
+
+  // Sync from parent when values change externally (e.g. preset added)
+  const joined = values.join(', ')
+  useEffect(() => {
+    setRaw(joined)
+  }, [joined])
+
+  return (
+    <Input
+      value={raw}
+      onChange={(e) => setRaw(e.target.value)}
+      onBlur={() => {
+        const parsed = raw.split(',').map((o) => o.trim()).filter(Boolean)
+        onChange(parsed)
+        setRaw(parsed.join(', '))
+      }}
+      placeholder={placeholder}
+      className="h-8 text-xs ml-6"
+    />
   )
 }

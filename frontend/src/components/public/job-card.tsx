@@ -22,18 +22,18 @@ export function JobCard({ job, workspaceSlug }: JobCardProps) {
   return (
     <a
       href={`/jobs/${workspaceSlug}/${job.slug}`}
-      className="group flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-5 py-4 transition-all hover:border-zinc-300 hover:shadow-sm"
+      className="group flex items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 sm:px-5 sm:py-4 transition-all hover:border-zinc-300 hover:shadow-sm active:bg-zinc-50"
     >
       <div className="min-w-0">
-        <h3 className="text-sm font-semibold text-zinc-900 group-hover:text-blue-600 transition-colors">
+        <h3 className="text-xs sm:text-sm font-semibold text-zinc-900 group-hover:text-blue-600 transition-colors leading-snug">
           {job.title}
         </h3>
         {meta.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-3">
+          <div className="mt-1 sm:mt-1.5 flex flex-wrap items-center gap-2 sm:gap-3">
             {meta.map((m, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 text-xs text-zinc-500"
+                className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] text-zinc-500"
               >
                 <m.icon className="h-3 w-3 text-zinc-400" />
                 {m.text}
@@ -42,8 +42,8 @@ export function JobCard({ job, workspaceSlug }: JobCardProps) {
           </div>
         )}
       </div>
-      <span className="ml-4 shrink-0 text-xs font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-        View &rarr;
+      <span className="ml-3 sm:ml-4 shrink-0 text-xs font-medium text-blue-600 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        &rarr;
       </span>
     </a>
   )

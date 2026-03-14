@@ -26,14 +26,14 @@ import {
 import type { ApplicationFormConfig, ApplicationFormField } from '@/lib/types/database'
 
 const inputCls =
-  'h-10 rounded-xl border-zinc-200 bg-zinc-50/40 text-[13px] shadow-none placeholder:text-zinc-400 focus-visible:border-blue-400 focus-visible:ring-blue-500/15 focus-visible:bg-white transition-colors'
+  'h-10 sm:h-9 rounded-2xl border-zinc-200 bg-zinc-50/40 text-xs sm:text-[12px] shadow-none placeholder:text-zinc-400 placeholder:truncate focus-visible:border-blue-400 focus-visible:ring-blue-500/15 focus-visible:bg-white transition-colors'
 const triggerCls =
-  'w-full h-10 rounded-xl border-zinc-200 bg-zinc-50/40 text-[13px] shadow-none data-[placeholder]:text-zinc-400 focus-visible:border-blue-400 focus-visible:ring-blue-500/15'
-const contentCls = 'rounded-xl border-zinc-200/80 shadow-xl'
-const itemCls = 'rounded-lg text-[13px] cursor-pointer'
-const labelCls = 'text-xs font-medium text-zinc-500'
+  'w-full h-10 sm:h-9 rounded-2xl border-zinc-200 bg-zinc-50/40 text-xs sm:text-[12px] shadow-none data-[placeholder]:text-zinc-400 focus-visible:border-blue-400 focus-visible:ring-blue-500/15 [&>span]:truncate [&>span]:min-w-0'
+const contentCls = 'rounded-2xl border-zinc-200/80 shadow-xl'
+const itemCls = 'rounded-xl text-xs sm:text-[12px] cursor-pointer py-2.5 sm:py-2'
+const labelCls = 'text-[11px] sm:text-xs font-medium text-zinc-500 break-words'
 const textareaCls =
-  'rounded-xl border-zinc-200 bg-zinc-50/40 text-[13px] shadow-none placeholder:text-zinc-400 focus-visible:border-blue-400 focus-visible:ring-blue-500/15 focus-visible:bg-white transition-colors'
+  'rounded-2xl border-zinc-200 bg-zinc-50/40 text-xs sm:text-[12px] shadow-none placeholder:text-zinc-400 focus-visible:border-blue-400 focus-visible:ring-blue-500/15 focus-visible:bg-white transition-colors'
 
 interface ApplicationFormProps {
   jobId: string
@@ -192,19 +192,19 @@ export function ApplicationForm({
 
   if (submitted) {
     return (
-      <div className="py-8 text-center">
-        <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
-        <h3 className="mt-4 text-lg font-semibold text-zinc-900">Application submitted!</h3>
-        <p className="mt-2 text-sm text-zinc-500">
+      <div className="py-6 sm:py-8 text-center px-2">
+        <CheckCircle2 className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-green-500" />
+        <h3 className="mt-3 sm:mt-4 text-base sm:text-lg font-semibold text-zinc-900">Application submitted!</h3>
+        <p className="mt-2 text-xs sm:text-sm text-zinc-500 leading-relaxed">
           Thank you for applying for <span className="font-medium">{jobTitle}</span> at{' '}
           <span className="font-medium">{workspaceName}</span>.
         </p>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-xs sm:text-sm text-zinc-500">
           We&apos;ll review your application and get back to you.
         </p>
         <a
           href={`/jobs/${workspaceSlug}`}
-          className="mt-6 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700"
+          className="mt-5 sm:mt-6 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700"
         >
           &larr; View all positions
         </a>
@@ -214,14 +214,14 @@ export function ApplicationForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 overflow-hidden">
         {/* Honeypot — hidden from humans */}
         <div className="absolute -left-[9999px]" aria-hidden="true">
           <input {...form.register('website')} tabIndex={-1} autoComplete="off" />
         </div>
 
         {/* Name */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FormField
             control={form.control}
             name="first_name"
@@ -309,11 +309,11 @@ export function ApplicationForm({
             Resume {config.require_resume ? '*' : '(optional)'}
           </label>
           {resumeFile ? (
-            <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50/40 px-4 py-3">
-              <FileText className="h-5 w-5 text-blue-500 shrink-0" />
+            <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/40 px-4 py-2.5">
+              <FileText className="h-4 w-4 text-blue-500 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-zinc-700">{resumeFile.name}</p>
-                <p className="text-xs text-zinc-400">
+                <p className="truncate text-xs font-medium text-zinc-700">{resumeFile.name}</p>
+                <p className="text-[10px] text-zinc-400">
                   {(resumeFile.size / 1024 / 1024).toFixed(1)} MB
                 </p>
               </div>
@@ -332,10 +332,10 @@ export function ApplicationForm({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50/30 py-6 text-sm text-zinc-500 hover:border-blue-300 hover:bg-blue-50/30 hover:text-blue-600 transition-colors"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/30 py-4 sm:py-5 text-[11px] sm:text-xs text-blue-500 hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600 active:bg-blue-100/50 transition-colors"
             >
-              <Upload className="h-4 w-4" />
-              Upload resume (PDF, DOC, DOCX — max 5MB)
+              <Upload className="h-3.5 w-3.5 shrink-0" />
+              <span className="text-center leading-snug">Upload resume<br className="sm:hidden" /><span className="hidden sm:inline"> — </span><span className="text-[10px] sm:text-[11px] text-blue-400">PDF, DOC, DOCX — max 5MB</span></span>
             </button>
           )}
           <input
@@ -394,13 +394,13 @@ export function ApplicationForm({
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-inset ring-red-200">
+          <div className="rounded-2xl bg-red-50 px-4 py-3 text-xs text-red-600 ring-1 ring-inset ring-red-200">
             {error}
           </div>
         )}
 
         {/* Submit */}
-        <Button type="submit" className="w-full h-11 rounded-xl" disabled={submitting}>
+        <Button type="submit" className="w-full h-11 sm:h-10 rounded-2xl text-xs sm:text-[13px]" disabled={submitting}>
           {submitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -467,11 +467,11 @@ function DynamicFileField({
         {field.label} {field.required ? '*' : '(optional)'}
       </label>
       {file ? (
-        <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50/40 px-4 py-3">
-          <FileText className="h-5 w-5 text-blue-500 shrink-0" />
+        <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/40 px-4 py-2.5">
+          <FileText className="h-4 w-4 text-blue-500 shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-zinc-700">{file.name}</p>
-            <p className="text-xs text-zinc-400">
+            <p className="truncate text-xs font-medium text-zinc-700">{file.name}</p>
+            <p className="text-[10px] text-zinc-400">
               {(file.size / 1024 / 1024).toFixed(1)} MB
             </p>
           </div>
@@ -490,10 +490,10 @@ function DynamicFileField({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50/30 py-5 text-sm text-zinc-500 hover:border-blue-300 hover:bg-blue-50/30 hover:text-blue-600 transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/30 py-3.5 sm:py-4 text-[11px] sm:text-xs text-blue-500 hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600 active:bg-blue-100/50 transition-colors"
         >
-          <Upload className="h-4 w-4" />
-          Upload file ({acceptStr} — max 10MB)
+          <Upload className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-center leading-snug">Upload file<br className="sm:hidden" /><span className="hidden sm:inline"> — </span><span className="text-[10px] sm:text-[11px] text-blue-400">{acceptStr} — max 10MB</span></span>
         </button>
       )}
       <input
@@ -539,7 +539,7 @@ function MultiSelectField({
       <label className={`block mb-1.5 ${labelCls}`}>
         {field.label} {field.required ? '*' : '(optional)'}
       </label>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {field.options!.map((opt) => {
           const selected = current.includes(opt)
           return (
@@ -547,10 +547,10 @@ function MultiSelectField({
               key={opt}
               type="button"
               onClick={() => toggle(opt)}
-              className={`rounded-full px-3 py-1.5 text-[13px] border transition-colors ${
+              className={`rounded-full px-3 py-1.5 text-[11px] sm:text-xs font-medium border transition-all duration-150 ${
                 selected
-                  ? 'border-blue-400 bg-blue-50 text-blue-700'
-                  : 'border-zinc-200 bg-zinc-50/40 text-zinc-600 hover:border-zinc-300'
+                  ? 'border-blue-300 bg-blue-50 text-blue-600 shadow-sm shadow-blue-100'
+                  : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 active:bg-zinc-50'
               }`}
             >
               {opt}
