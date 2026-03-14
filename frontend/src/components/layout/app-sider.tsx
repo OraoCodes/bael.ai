@@ -18,7 +18,6 @@ import {
   ChevronRight,
   ChevronsUpDown,
   Check,
-  Building2,
   Bell,
   LogOut,
 } from 'lucide-react'
@@ -60,12 +59,12 @@ export function AppSider() {
       const { data: { user: me } } = await supabase.auth.getUser()
       const { data } = await supabase
         .from('workspace_memberships')
-        .select('workspace_id, workspaces!inner(id, name, slug, deleted_at)')
+        .select('workspace_id, workspaces!inner(id, name, slug, logo_url, deleted_at)')
         .eq('user_id', me!.id)
         .is('workspaces.deleted_at', null)
       const seen = new Set<string>()
-      const result: { id: string; name: string; slug: string }[] = []
-      for (const m of (data || []) as unknown as Array<{ workspaces: { id: string; name: string; slug: string } }>) {
+      const result: { id: string; name: string; slug: string; logo_url: string | null }[] = []
+      for (const m of (data || []) as unknown as Array<{ workspaces: { id: string; name: string; slug: string; logo_url: string | null } }>) {
         const ws = m.workspaces
         if (ws && !seen.has(ws.id)) {
           seen.add(ws.id)
@@ -113,9 +112,12 @@ export function AppSider() {
       <div className="border-b border-border px-3 py-3">
         {collapsed ? (
           <div className="flex justify-center">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
-              <Building2 className="h-4 w-4 text-primary" />
-            </div>
+            <Avatar className="h-7 w-7 rounded-md">
+              {workspace.logo_url && <AvatarImage src={workspace.logo_url} alt={workspace.name} />}
+              <AvatarFallback className="rounded-md bg-primary/10 text-primary text-[11px] font-bold">
+                {workspace.name.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
           </div>
         ) : (
           <>
@@ -131,9 +133,12 @@ export function AppSider() {
                   )}
                   disabled={!hasMultiple}
                 >
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary text-[11px] font-bold text-primary-foreground">
-                    {workspace.name.charAt(0).toUpperCase()}
-                  </div>
+                  <Avatar className="h-6 w-6 shrink-0 rounded">
+                    {workspace.logo_url && <AvatarImage src={workspace.logo_url} alt={workspace.name} />}
+                    <AvatarFallback className="rounded text-[11px] font-bold bg-primary text-primary-foreground">
+                      {workspace.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <span className="flex-1 truncate">{workspace.name}</span>
                   {hasMultiple && (
                     <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -151,9 +156,12 @@ export function AppSider() {
                     onSelect={() => router.push(`/w/${w.slug}`)}
                     className="flex items-center gap-2"
                   >
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
-                      {w.name.charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar className="h-5 w-5 shrink-0 rounded">
+                      {w.logo_url && <AvatarImage src={w.logo_url} alt={w.name} />}
+                      <AvatarFallback className="rounded text-[10px] font-bold bg-primary/10 text-primary">
+                        {w.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <span className="flex-1 truncate">{w.name}</span>
                     {w.id === workspace.id && <Check className="h-3.5 w-3.5 text-primary" />}
                   </DropdownMenuItem>
