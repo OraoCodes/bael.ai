@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useWorkspace } from '@/components/providers/workspace-provider'
+import { useSubscriptionContext } from '@/components/providers/subscription-provider'
 import type { Candidate, CandidateAiProfile } from '@/lib/types/database'
 
 export interface AiParsedResume {
@@ -147,9 +148,16 @@ export function useCreateCandidate() {
   const { workspaceId } = useWorkspace()
   const supabase = createClient()
   const queryClient = useQueryClient()
+  const { canAddCandidate, candidateLimit, plan } = useSubscriptionContext()
 
   return useMutation({
     mutationFn: async (values: Partial<Candidate>) => {
+      if (!canAddCandidate) {
+        if (candidateLimit !== null) {
+          throw new Error(`You've reached your ${plan?.name ?? ''} plan limit of ${candidateLimit} candidates. Upgrade to add more.`)
+        }
+        throw new Error('Your subscription has expired. Please renew to add candidates.')
+      }
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
       const { data, error } = await supabase

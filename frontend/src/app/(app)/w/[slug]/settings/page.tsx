@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { Plus, Trash2, ExternalLink, Copy, MessageCircle, Linkedin, Smartphone, Mail, RefreshCw, Upload, X, GripVertical, Shield, AlertTriangle } from 'lucide-react'
+import { BillingTab } from '@/components/billing/billing-tab'
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -1131,16 +1132,20 @@ function IntegrationSettings() {
 }
 
 export default function SettingsPage() {
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+  const defaultTab = searchParams?.get('tab') ?? 'general'
+
   return (
     <>
       <PageHeader title="Settings" />
-      <Tabs defaultValue="general">
+      <Tabs defaultValue={defaultTab}>
         <TabsList variant="line">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="pipeline">Pipeline Stages</TabsTrigger>
           <TabsTrigger value="job-board">Job Board</TabsTrigger>
           <TabsTrigger value="features">Features</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
         </TabsList>
         <TabsContent value="general">
           <GeneralSettings />
@@ -1156,6 +1161,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="integrations">
           <IntegrationSettings />
+        </TabsContent>
+        <TabsContent value="billing">
+          <BillingTab />
         </TabsContent>
       </Tabs>
     </>
