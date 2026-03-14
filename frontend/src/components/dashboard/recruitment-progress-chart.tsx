@@ -26,15 +26,6 @@ export function RecruitmentProgressChart() {
     count: s.count,
   }))
 
-  const total = stages.reduce((sum, s) => sum + s.count, 0)
-  const shortlistedStage = stages.find((s) =>
-    s.stageName.toLowerCase().includes('shortlist') ||
-    s.stageName.toLowerCase().includes('screen')
-  )
-  const shortlistedCount = shortlistedStage?.count ?? 0
-  const conversionRate = total > 0 ? Math.round((shortlistedCount / total) * 100) : 0
-  const dropOffRate = 100 - conversionRate
-
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -93,23 +84,6 @@ export function RecruitmentProgressChart() {
               </BarChart>
             </ResponsiveContainer>
 
-            {/* Micro-copy summary */}
-            <div className="mt-3 flex items-center gap-4 rounded-xl bg-muted/50 px-4 py-2.5">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Shortlisted</p>
-                <p className="text-sm font-bold text-foreground">{shortlistedCount}</p>
-              </div>
-              <div className="h-6 w-px bg-border" />
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Conversion</p>
-                <p className="text-sm font-bold text-emerald-600">{conversionRate}%</p>
-              </div>
-              <div className="h-6 w-px bg-border" />
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Drop-off</p>
-                <p className="text-sm font-bold text-red-500">{dropOffRate}%</p>
-              </div>
-            </div>
           </>
         )}
       </CardContent>
