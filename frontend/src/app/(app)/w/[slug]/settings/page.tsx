@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useForm, Controller } from 'react-hook-form'
-import { Plus, Trash2, ExternalLink, Copy, MessageCircle, Linkedin, Smartphone, Mail, RefreshCw, Upload, X } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, Copy, MessageCircle, Linkedin, Smartphone, Mail, RefreshCw, Upload, X, GripVertical, Shield, AlertTriangle } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -19,7 +19,11 @@ import { ConfirmDelete } from '@/components/shared/confirm-delete'
 import { PageHeader } from '@/components/shared/page-header'
 import { useWorkspace } from '@/components/providers/workspace-provider'
 import { useWorkspaceSettings, useUpdateWorkspace, useUpdateWorkspaceSettings } from '@/lib/queries/workspaces'
-import { useStages, useCreateStage, useUpdateStage, useDeleteStage } from '@/lib/queries/pipeline-stages'
+import { useStages, useCreateStage, useUpdateStage, useDeleteStage, useReorderStages, useDeleteStageWithMigration, useStageApplicationCount } from '@/lib/queries/pipeline-stages'
+import { DndContext, closestCenter, DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useTelegramLink, useGenerateTelegramCode, useUnlinkTelegram } from '@/lib/queries/telegram'
 import { useLinkedInLink, useConnectLinkedIn, useUnlinkLinkedIn } from '@/lib/queries/linkedin'
 import { useGmailLink, useConnectGmail, useUnlinkGmail, useToggleGmailSync, useSyncGmailNow } from '@/lib/queries/gmail'
@@ -281,81 +285,320 @@ function GeneralSettings() {
   )
 }
 
+function SortableStageRow({
+  stage,
+  canEdit,
+  onDelete,
+  onUpdateColor,
+}: {
+  stage: PipelineStage
+  canEdit: boolean
+  onDelete: (id: string) => void
+  onUpdateColor: (id: string, color: string) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: stage.id,
+    disabled: !canEdit || stage.is_protected,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <TableRow ref={setNodeRef} style={style}>
+      <TableCell className="w-10">
+        {canEdit && !stage.is_protected ? (
+          <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground">
+            <GripVertical className="h-4 w-4" />
+          </button>
+        ) : (
+          <Shield className="h-4 w-4 text-blue-500 ml-1" />
+        )}
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{stage.name}</span>
+          {stage.is_protected && (
+            <span className="text-[10px] font-medium uppercase tracking-wider text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+              System
+            </span>
+          )}
+          {stage.is_terminal && (
+            <span className="text-[10px] font-medium uppercase tracking-wider text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+              Terminal
+            </span>
+          )}
+        </div>
+      </TableCell>
+      <TableCell className="w-20">
+        <input
+          type="color"
+          value={stage.color}
+          disabled={!canEdit}
+          onChange={(e) => onUpdateColor(stage.id, e.target.value)}
+          className="h-7 w-7 cursor-pointer rounded border border-border p-0.5 disabled:cursor-default"
+        />
+      </TableCell>
+      {canEdit && (
+        <TableCell className="w-12">
+          {!stage.is_protected && (
+            <Button variant="ghost" size="sm" onClick={() => onDelete(stage.id)}>
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          )}
+        </TableCell>
+      )}
+    </TableRow>
+  )
+}
+
+function StageDeleteDialog({
+  stage,
+  stages,
+  open,
+  onClose,
+}: {
+  stage: PipelineStage | null
+  stages: PipelineStage[]
+  open: boolean
+  onClose: () => void
+}) {
+  const { data: appCount, isLoading: countLoading } = useStageApplicationCount(stage?.id ?? null)
+  const deleteStage = useDeleteStage()
+  const deleteWithMigration = useDeleteStageWithMigration()
+  const [migrateToId, setMigrateToId] = useState<string>('')
+
+  const hasApplications = (appCount ?? 0) > 0
+  const otherStages = stages.filter((s) => s.id !== stage?.id)
+  const isPending = deleteStage.isPending || deleteWithMigration.isPending
+
+  const handleConfirm = async () => {
+    if (!stage) return
+    try {
+      if (hasApplications) {
+        if (!migrateToId) {
+          toast.error('Please select a stage to move candidates to')
+          return
+        }
+        await deleteWithMigration.mutateAsync({ stageId: stage.id, migrateToStageId: migrateToId })
+      } else {
+        await deleteStage.mutateAsync(stage.id)
+      }
+      toast.success('Stage removed')
+      onClose()
+    } catch {
+      toast.error('Failed to remove stage')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove &ldquo;{stage?.name}&rdquo; stage?</DialogTitle>
+          <DialogDescription>
+            This will permanently remove this pipeline stage.
+          </DialogDescription>
+        </DialogHeader>
+
+        {countLoading ? (
+          <div className="flex items-center gap-2 py-4">
+            <Spinner /> Checking for candidates...
+          </div>
+        ) : hasApplications ? (
+          <div className="space-y-3 py-2">
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-800">
+                  {appCount} candidate{appCount !== 1 ? 's' : ''} in this stage
+                </p>
+                <p className="text-amber-700 mt-1">
+                  Choose a stage to move them to before deleting.
+                </p>
+              </div>
+            </div>
+            <Select value={migrateToId} onValueChange={setMigrateToId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Move candidates to..." />
+              </SelectTrigger>
+              <SelectContent>
+                {otherStages.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-2">
+            No candidates are in this stage. It can be safely removed.
+          </p>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={isPending || countLoading || (hasApplications && !migrateToId)}
+          >
+            {isPending ? 'Removing...' : 'Remove Stage'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function PipelineSettings() {
   const { role } = useWorkspace()
   const { data: stages, isLoading } = useStages()
   const createStage = useCreateStage()
   const updateStage = useUpdateStage()
-  const deleteStage = useDeleteStage()
+  const reorderStages = useReorderStages()
   const [newStageName, setNewStageName] = useState('')
-  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteStage, setDeleteStage] = useState<PipelineStage | null>(null)
   const canEdit = CAN_ADMIN.includes(role)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   if (isLoading) return <Spinner />
 
+  // Separate protected-first (Applied) and protected-last (Hired, Rejected) from draggable middle
+  const appliedStage = stages?.find((s) => s.is_protected && s.name === 'Applied')
+  const terminalProtected = stages?.filter((s) => s.is_protected && s.is_terminal) || []
+  const draggableStages = stages?.filter(
+    (s) => !s.is_protected
+  ) || []
+
   const handleAddStage = async () => {
     if (!newStageName.trim()) return
-    const maxPos = Math.max(...(stages || []).map((s) => s.position), 0)
+    // Insert before terminal stages
+    const terminalStart = terminalProtected.length > 0
+      ? Math.min(...terminalProtected.map((s) => s.position))
+      : (stages?.length ?? 0) + 1
+    // Shift terminal stages up by 1
+    const newPos = terminalStart
     try {
+      // First bump terminal stages
+      for (const ts of terminalProtected) {
+        await updateStage.mutateAsync({ id: ts.id, position: ts.position + 1000 })
+      }
       await createStage.mutateAsync({
         name: newStageName.trim(),
-        position: maxPos + 1,
+        position: newPos,
         color: '#6B7280',
         is_terminal: false,
       })
+      // Re-assign terminal positions
+      for (let i = 0; i < terminalProtected.length; i++) {
+        await updateStage.mutateAsync({ id: terminalProtected[i].id, position: newPos + 1 + i })
+      }
       setNewStageName('')
       toast.success('Stage added')
-    } catch { toast.error('Failed to add stage') }
+    } catch {
+      toast.error('Failed to add stage')
+    }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id || !stages) return
+
+    const oldIndex = draggableStages.findIndex((s) => s.id === active.id)
+    const newIndex = draggableStages.findIndex((s) => s.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    // Reorder the draggable stages
+    const reordered = [...draggableStages]
+    const [moved] = reordered.splice(oldIndex, 1)
+    reordered.splice(newIndex, 0, moved)
+
+    // Compute full ordering: Applied (1) + draggable (2..N-2) + terminals (N-1..N)
+    const allOrdered: { id: string; position: number }[] = []
+    let pos = 1
+    if (appliedStage) {
+      allOrdered.push({ id: appliedStage.id, position: pos++ })
+    }
+    for (const s of reordered) {
+      allOrdered.push({ id: s.id, position: pos++ })
+    }
+    for (const s of terminalProtected) {
+      allOrdered.push({ id: s.id, position: pos++ })
+    }
+
     try {
-      await deleteStage.mutateAsync(id)
-      toast.success('Stage removed')
-    } catch { toast.error('Failed to remove stage') }
+      await reorderStages.mutateAsync(allOrdered)
+      toast.success('Stages reordered')
+    } catch {
+      toast.error('Failed to reorder stages')
+    }
+  }
+
+  const handleUpdateColor = (id: string, color: string) => {
+    updateStage.mutate({ id, color })
   }
 
   return (
     <div className="space-y-6">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead className="w-20">Position</TableHead>
-            <TableHead className="w-20">Color</TableHead>
-            <TableHead className="w-20">Terminal</TableHead>
-            {canEdit && <TableHead className="w-15" />}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {stages?.map((stage: PipelineStage) => (
-            <TableRow key={stage.id}>
-              <TableCell>{stage.name}</TableCell>
-              <TableCell>{stage.position}</TableCell>
-              <TableCell>
-                <div
-                  className="h-5 w-5 rounded border border-border"
-                  style={{ background: stage.color }}
-                />
-              </TableCell>
-              <TableCell>
-                <Switch
-                  checked={stage.is_terminal}
-                  disabled={!canEdit}
-                  onCheckedChange={(checked) => updateStage.mutate({ id: stage.id, is_terminal: checked })}
-                />
-              </TableCell>
-              {canEdit && (
-                <TableCell>
-                  <Button variant="ghost" size="sm" onClick={() => setDeleteId(stage.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </TableCell>
-              )}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10" />
+              <TableHead>Name</TableHead>
+              <TableHead className="w-20">Color</TableHead>
+              {canEdit && <TableHead className="w-12" />}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {/* Applied stage — always first, not draggable */}
+            {appliedStage && (
+              <SortableStageRow
+                key={appliedStage.id}
+                stage={appliedStage}
+                canEdit={canEdit}
+                onDelete={() => {}}
+                onUpdateColor={handleUpdateColor}
+              />
+            )}
+
+            {/* Draggable middle stages */}
+            <SortableContext items={draggableStages.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              {draggableStages.map((stage) => (
+                <SortableStageRow
+                  key={stage.id}
+                  stage={stage}
+                  canEdit={canEdit}
+                  onDelete={(id) => setDeleteStage(stages?.find((s) => s.id === id) ?? null)}
+                  onUpdateColor={handleUpdateColor}
+                />
+              ))}
+            </SortableContext>
+
+            {/* Terminal protected stages — always last, not draggable */}
+            {terminalProtected.map((stage) => (
+              <SortableStageRow
+                key={stage.id}
+                stage={stage}
+                canEdit={canEdit}
+                onDelete={() => {}}
+                onUpdateColor={handleUpdateColor}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </DndContext>
 
       {canEdit && (
         <div className="flex items-center gap-2">
@@ -373,13 +616,16 @@ function PipelineSettings() {
         </div>
       )}
 
-      <ConfirmDelete
-        title="Remove this stage?"
-        description="This action cannot be undone."
-        open={!!deleteId}
-        loading={deleteStage.isPending}
-        onConfirm={() => { if (deleteId) handleDelete(deleteId).then(() => setDeleteId(null)) }}
-        onCancel={() => setDeleteId(null)}
+      <p className="text-xs text-muted-foreground">
+        <Shield className="inline h-3 w-3 mr-1 text-blue-500" />
+        System stages (Applied, Hired, Rejected) cannot be deleted or reordered. Drag other stages to rearrange your pipeline.
+      </p>
+
+      <StageDeleteDialog
+        stage={deleteStage}
+        stages={stages || []}
+        open={!!deleteStage}
+        onClose={() => setDeleteStage(null)}
       />
     </div>
   )

@@ -154,7 +154,7 @@ export default async function JobDetailPage({ params }: Props) {
       <div className="mt-16 border-t border-zinc-200 pt-6 text-center">
         <p className="text-xs text-zinc-400">
           Powered by{' '}
-          <span className="font-medium text-zinc-500">bael.ai</span>
+          <a href="https://bael.ai" target="_blank" rel="noopener noreferrer" className="font-medium text-zinc-500 hover:text-zinc-700 underline">bael.ai</a>
         </p>
       </div>
     </div>

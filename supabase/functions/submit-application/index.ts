@@ -309,6 +309,7 @@ serve(async (req) => {
     const coverLetter = (formData.get("cover_letter") as string || "").trim() || null;
     const resumeFile = formData.get("resume") as File | null;
     const customAnswersRaw = formData.get("custom_answers") as string | null;
+    const customFileFieldsRaw = formData.get("custom_file_fields") as string | null;
     const honeypot = formData.get("website") as string | null;
 
     // Honeypot — silent success for bots
@@ -580,6 +581,48 @@ serve(async (req) => {
         }
       } catch (e) {
         console.error("Error parsing custom answers:", e);
+      }
+    }
+
+    // ── Upload custom file attachments ──────────────────────────────────────
+    if (customFileFieldsRaw) {
+      try {
+        const fileMeta: Array<{ field_key: string; field_label: string }> =
+          JSON.parse(customFileFieldsRaw);
+
+        for (const meta of fileMeta) {
+          const file = formData.get(`file_${meta.field_key}`) as File | null;
+          if (!file || file.size === 0) continue;
+          if (file.size > 10 * 1024 * 1024) {
+            console.warn(`Skipping file ${meta.field_key}: exceeds 10MB`);
+            continue;
+          }
+
+          const ext = file.name.split(".").pop() || "pdf";
+          const safeName = `${meta.field_key}_${Date.now()}.${ext}`;
+          const filePath = `${job.workspace_id}/${candidateId}/attachments/${safeName}`;
+
+          const { error: uploadErr } = await supabase.storage
+            .from("resumes")
+            .upload(filePath, file, { upsert: false, contentType: file.type });
+
+          if (uploadErr) {
+            console.error(`File upload error for ${meta.field_key}:`, uploadErr);
+            continue;
+          }
+
+          // Store the path as the answer value with field_type = 'file'
+          await supabase.from("application_answers").insert({
+            application_id: application.id,
+            workspace_id: job.workspace_id,
+            field_key: meta.field_key,
+            field_label: meta.field_label,
+            field_type: "file",
+            value: filePath,
+          });
+        }
+      } catch (e) {
+        console.error("Error processing custom file uploads:", e);
       }
     }
 

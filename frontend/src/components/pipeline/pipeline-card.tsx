@@ -2,8 +2,9 @@
 
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { Bot, Star, CalendarX2, CalendarCheck, MapPin, Phone, Building2, Video } from 'lucide-react'
+import { Bot, Star, CalendarX2, CalendarCheck, MapPin, Phone, Building2, Video, FileText } from 'lucide-react'
 import { useState } from 'react'
+import { ApplicationDetailDialog } from '@/components/candidates/application-detail-dialog'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import type { CandidateApplicationWithDetails } from '@/lib/types/database'
@@ -352,6 +353,7 @@ function InterviewDetailsPopover({
 export function PipelineCard({ application }: PipelineCardProps) {
   const { workspace, role } = useWorkspace()
   const updateRating = useUpdateApplicationRating()
+  const [showDetail, setShowDetail] = useState(false)
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: application.id,
@@ -412,7 +414,7 @@ export function PipelineCard({ application }: PipelineCardProps) {
         )}
 
         <div
-          className="mt-1.5"
+          className="mt-1.5 flex items-center justify-between"
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
@@ -442,7 +444,28 @@ export function PipelineCard({ application }: PipelineCardProps) {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setShowDetail(true)}
+            className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+          >
+            <FileText className="h-3 w-3" />
+            View
+          </button>
         </div>
+
+        {showDetail && (
+          <ApplicationDetailDialog
+            open={showDetail}
+            onOpenChange={setShowDetail}
+            applicationId={application.id}
+            jobTitle=""
+            appliedAt={application.applied_at}
+            stageName={application.pipeline_stages?.name ?? null}
+            stageColor={application.pipeline_stages?.color ?? null}
+            metadata={application.metadata}
+            candidateResumeUrl={candidate.resume_url ?? null}
+          />
+        )}
       </div>
     </div>
   )

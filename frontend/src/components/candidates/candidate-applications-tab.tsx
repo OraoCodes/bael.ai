@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Briefcase } from 'lucide-react'
+import { Plus, Briefcase, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,6 +12,7 @@ import { useWorkspace } from '@/components/providers/workspace-provider'
 import { CAN_WRITE } from '@/lib/utils/constants'
 import { formatDate } from '@/lib/utils/format'
 import { AddToJobDialog } from './add-to-job-dialog'
+import { ApplicationDetailDialog } from './application-detail-dialog'
 
 const STATUS_COLORS: Record<string, string> = {
   open: 'bg-green-100 text-green-800',
@@ -29,9 +30,12 @@ export function CandidateApplicationsTab({ candidateId }: CandidateApplicationsT
   const { workspace, role } = useWorkspace()
   const { data: applications, isLoading } = useApplicationsByCandidate(candidateId)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [detailApp, setDetailApp] = useState<string | null>(null)
   const base = `/w/${workspace.slug}`
 
   const existingJobIds = new Set((applications || []).map((a) => (a.jobs as { id: string })?.id).filter(Boolean))
+
+  const selectedApp = applications?.find((a) => a.id === detailApp)
 
   if (isLoading) {
     return (
@@ -68,6 +72,7 @@ export function CandidateApplicationsTab({ candidateId }: CandidateApplicationsT
           {applications.map((app) => {
             const job = app.jobs as { id: string; title: string; status: string } | null
             const stage = app.pipeline_stages as { id: string; name: string; color: string } | null
+            const candidateData = app.candidates as { resume_url: string | null } | null
             return (
               <Card key={app.id}>
                 <CardContent className="flex items-center justify-between py-3">
@@ -85,6 +90,15 @@ export function CandidateApplicationsTab({ candidateId }: CandidateApplicationsT
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setDetailApp(app.id)}
+                    >
+                      <Eye className="mr-1 h-3.5 w-3.5" />
+                      View
+                    </Button>
                     {stage && (
                       <Badge variant="outline" className="text-xs" style={{ borderColor: stage.color, color: stage.color }}>
                         {stage.name}
@@ -109,6 +123,20 @@ export function CandidateApplicationsTab({ candidateId }: CandidateApplicationsT
         candidateId={candidateId}
         existingJobIds={existingJobIds}
       />
+
+      {selectedApp && (
+        <ApplicationDetailDialog
+          open={!!detailApp}
+          onOpenChange={(open) => { if (!open) setDetailApp(null) }}
+          applicationId={selectedApp.id}
+          jobTitle={(selectedApp.jobs as { title: string })?.title ?? 'Unknown Job'}
+          appliedAt={selectedApp.applied_at}
+          stageName={(selectedApp.pipeline_stages as { name: string } | null)?.name ?? null}
+          stageColor={(selectedApp.pipeline_stages as { color: string } | null)?.color ?? null}
+          metadata={selectedApp.metadata}
+          candidateResumeUrl={(selectedApp.candidates as { resume_url: string | null } | null)?.resume_url ?? null}
+        />
+      )}
     </div>
   )
 }

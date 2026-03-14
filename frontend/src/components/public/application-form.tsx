@@ -70,6 +70,7 @@ export function ApplicationForm({
   applicationForm,
 }: ApplicationFormProps) {
   const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [customFiles, setCustomFiles] = useState<Record<string, File>>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -115,6 +116,15 @@ export function ApplicationForm({
       return
     }
 
+    // Validate required file fields
+    const missingFile = config.fields.find(
+      (f) => f.type === 'file' && f.required && !customFiles[f.key]
+    )
+    if (missingFile) {
+      setError(`${missingFile.label} is required`)
+      return
+    }
+
     setSubmitting(true)
     setError(null)
 
@@ -130,9 +140,10 @@ export function ApplicationForm({
       if (values.website) formData.append('website', values.website) // honeypot
       if (resumeFile) formData.append('resume', resumeFile)
 
-      // Custom answers
+      // Custom answers (text-based fields)
       if (config.fields.length > 0) {
         const answers = config.fields
+          .filter((field) => field.type !== 'file')
           .map((field) => ({
             field_key: field.key,
             field_label: field.label,
@@ -143,6 +154,20 @@ export function ApplicationForm({
 
         if (answers.length > 0) {
           formData.append('custom_answers', JSON.stringify(answers))
+        }
+
+        // Custom file uploads
+        const fileFields = config.fields.filter((f) => f.type === 'file')
+        const fileMeta: Array<{ field_key: string; field_label: string }> = []
+        for (const field of fileFields) {
+          const file = customFiles[field.key]
+          if (file) {
+            formData.append(`file_${field.key}`, file)
+            fileMeta.push({ field_key: field.key, field_label: field.label })
+          }
+        }
+        if (fileMeta.length > 0) {
+          formData.append('custom_file_fields', JSON.stringify(fileMeta))
         }
       }
 
@@ -347,9 +372,25 @@ export function ApplicationForm({
         )}
 
         {/* Dynamic custom fields */}
-        {config.fields.map((field) => (
-          <DynamicField key={field.key} field={field} form={form} />
-        ))}
+        {config.fields.map((field) =>
+          field.type === 'file' ? (
+            <DynamicFileField
+              key={field.key}
+              field={field}
+              file={customFiles[field.key]}
+              onFileChange={(key, file) =>
+                setCustomFiles((prev) => {
+                  const next = { ...prev }
+                  if (file) next[key] = file
+                  else delete next[key]
+                  return next
+                })
+              }
+            />
+          ) : (
+            <DynamicField key={field.key} field={field} form={form} />
+          )
+        )}
 
         {/* Error */}
         {error && (
@@ -406,6 +447,121 @@ function SubmittingStatus() {
   )
 }
 
+const FILE_MAX_SIZE = 10 * 1024 * 1024 // 10MB per attachment
+
+function DynamicFileField({
+  field,
+  file,
+  onFileChange,
+}: {
+  field: ApplicationFormField
+  file: File | undefined
+  onFileChange: (key: string, file: File | null) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const acceptStr = field.accept?.join(',') || '.pdf,.doc,.docx,.jpg,.png'
+
+  return (
+    <div>
+      <label className={`block mb-1.5 ${labelCls}`}>
+        {field.label} {field.required ? '*' : '(optional)'}
+      </label>
+      {file ? (
+        <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50/40 px-4 py-3">
+          <FileText className="h-5 w-5 text-blue-500 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-zinc-700">{file.name}</p>
+            <p className="text-xs text-zinc-400">
+              {(file.size / 1024 / 1024).toFixed(1)} MB
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onFileChange(field.key, null)
+              if (inputRef.current) inputRef.current.value = ''
+            }}
+            className="text-zinc-400 hover:text-zinc-600 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50/30 py-5 text-sm text-zinc-500 hover:border-blue-300 hover:bg-blue-50/30 hover:text-blue-600 transition-colors"
+        >
+          <Upload className="h-4 w-4" />
+          Upload file ({acceptStr} — max 10MB)
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept={acceptStr}
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (!f) return
+          if (f.size > FILE_MAX_SIZE) {
+            alert('File must be under 10MB')
+            return
+          }
+          onFileChange(field.key, f)
+        }}
+        className="hidden"
+      />
+    </div>
+  )
+}
+
+function MultiSelectField({
+  field,
+  form,
+  name,
+}: {
+  field: ApplicationFormField
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form: any
+  name: string
+}) {
+  const current: string[] = (form.watch(name) || '').split('||').filter(Boolean)
+
+  const toggle = (opt: string) => {
+    const next = current.includes(opt)
+      ? current.filter((v: string) => v !== opt)
+      : [...current, opt]
+    form.setValue(name, next.join('||'), { shouldValidate: true })
+  }
+
+  return (
+    <div>
+      <label className={`block mb-1.5 ${labelCls}`}>
+        {field.label} {field.required ? '*' : '(optional)'}
+      </label>
+      <div className="flex flex-wrap gap-2">
+        {field.options!.map((opt) => {
+          const selected = current.includes(opt)
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggle(opt)}
+              className={`rounded-full px-3 py-1.5 text-[13px] border transition-colors ${
+                selected
+                  ? 'border-blue-400 bg-blue-50 text-blue-700'
+                  : 'border-zinc-200 bg-zinc-50/40 text-zinc-600 hover:border-zinc-300'
+              }`}
+            >
+              {opt}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function DynamicField({
   field,
   form,
@@ -444,6 +600,12 @@ function DynamicField({
           </FormItem>
         )}
       />
+    )
+  }
+
+  if (field.type === 'multiselect' && field.options) {
+    return (
+      <MultiSelectField field={field} form={form} name={name} />
     )
   }
 

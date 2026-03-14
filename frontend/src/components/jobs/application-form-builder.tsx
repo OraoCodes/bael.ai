@@ -25,7 +25,9 @@ const FIELD_TYPES = [
   { value: 'textarea', label: 'Long Text' },
   { value: 'url', label: 'URL' },
   { value: 'select', label: 'Dropdown' },
+  { value: 'multiselect', label: 'Multi-Select' },
   { value: 'boolean', label: 'Yes/No' },
+  { value: 'file', label: 'File Upload' },
 ] as const
 
 const PRESET_QUESTIONS: ApplicationFormField[] = [
@@ -35,6 +37,9 @@ const PRESET_QUESTIONS: ApplicationFormField[] = [
   { key: 'work_authorization', label: 'Work Authorization Status', type: 'select', required: true, options: ['Authorized', 'Requires Sponsorship', 'Other'] },
   { key: 'notice_period', label: 'Notice Period', type: 'text', required: false },
   { key: 'motivation', label: 'Why are you interested in this role?', type: 'textarea', required: false },
+  { key: 'cover_letter_file', label: 'Cover Letter (upload)', type: 'file', required: false, accept: ['.pdf', '.doc', '.docx'] },
+  { key: 'portfolio', label: 'Portfolio / Work Samples', type: 'file', required: false, accept: ['.pdf', '.jpg', '.png', '.zip'] },
+  { key: 'good_conduct', label: 'Certificate of Good Conduct', type: 'file', required: false, accept: ['.pdf', '.jpg', '.png'] },
 ]
 
 export function ApplicationFormBuilder({ value, onChange }: ApplicationFormBuilderProps) {
@@ -180,11 +185,22 @@ export function ApplicationFormBuilder({ value, onChange }: ApplicationFormBuild
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  {field.type === 'select' && (
+                  {(field.type === 'select' || field.type === 'multiselect') && (
                     <Input
                       value={(field.options || []).join(', ')}
                       onChange={(e) => updateOptions(idx, e.target.value)}
                       placeholder="Options (comma-separated)"
+                      className="h-8 text-xs ml-6"
+                    />
+                  )}
+                  {field.type === 'file' && (
+                    <Input
+                      value={(field.accept || []).join(', ')}
+                      onChange={(e) => {
+                        const accept = e.target.value.split(',').map((s) => s.trim()).filter(Boolean)
+                        updateField(idx, { accept })
+                      }}
+                      placeholder="Accepted extensions (e.g. .pdf, .jpg, .png)"
                       className="h-8 text-xs ml-6"
                     />
                   )}

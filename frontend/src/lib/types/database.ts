@@ -141,6 +141,7 @@ export interface PipelineStage {
   position: number
   color: string
   is_terminal: boolean
+  is_protected: boolean
   created_at: string
   updated_at: string
 }
@@ -249,9 +250,10 @@ export interface AiJobSuggestion {
 export interface ApplicationFormField {
   key: string
   label: string
-  type: 'text' | 'textarea' | 'url' | 'select' | 'boolean'
+  type: 'text' | 'textarea' | 'url' | 'select' | 'multiselect' | 'boolean' | 'file'
   required: boolean
   options?: string[]
+  accept?: string[] // e.g. ['.pdf', '.jpg', '.png'] — for file fields
 }
 
 export interface ApplicationFormConfig {

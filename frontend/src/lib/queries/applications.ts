@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useWorkspace } from '@/components/providers/workspace-provider'
-import type { CandidateApplication, CandidateApplicationWithDetails } from '@/lib/types/database'
+import type { CandidateApplication, CandidateApplicationWithDetails, ApplicationAnswer } from '@/lib/types/database'
 
 export const applicationKeys = {
   all: (wsId: string) => ['applications', wsId] as const,
@@ -9,6 +9,8 @@ export const applicationKeys = {
   byCandidate: (wsId: string, candidateId: string) =>
     [...applicationKeys.all(wsId), 'candidate', candidateId] as const,
   detail: (wsId: string, id: string) => [...applicationKeys.all(wsId), 'detail', id] as const,
+  answers: (wsId: string, applicationId: string) =>
+    [...applicationKeys.all(wsId), 'answers', applicationId] as const,
   upcomingInterviews: (wsId: string) => [...applicationKeys.all(wsId), 'upcoming-interviews'] as const,
 }
 
@@ -42,7 +44,7 @@ export function useApplicationsByCandidate(candidateId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('candidate_applications')
-        .select('*, pipeline_stages(*), jobs(id, title, status)')
+        .select('*, pipeline_stages(*), jobs(id, title, status), candidates(resume_url)')
         .eq('workspace_id', workspaceId)
         .eq('candidate_id', candidateId)
         .is('deleted_at', null)
@@ -51,6 +53,26 @@ export function useApplicationsByCandidate(candidateId: string) {
       return data
     },
     enabled: !!candidateId,
+  })
+}
+
+export function useApplicationAnswers(applicationId: string | null) {
+  const { workspaceId } = useWorkspace()
+  const supabase = createClient()
+
+  return useQuery({
+    queryKey: applicationKeys.answers(workspaceId, applicationId || ''),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('application_answers')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .eq('application_id', applicationId!)
+        .order('created_at')
+      if (error) throw error
+      return data as ApplicationAnswer[]
+    },
+    enabled: !!applicationId,
   })
 }
 

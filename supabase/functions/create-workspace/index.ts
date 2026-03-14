@@ -108,12 +108,12 @@ serve(async (req) => {
 
     // 3. Create default pipeline stages
     const defaultStages = [
-      { name: "Applied", position: 1, is_terminal: false },
-      { name: "Phone Screen", position: 2, is_terminal: false },
-      { name: "Interview", position: 3, is_terminal: false },
-      { name: "Offer", position: 4, is_terminal: false },
-      { name: "Hired", position: 5, is_terminal: true },
-      { name: "Rejected", position: 6, is_terminal: true },
+      { name: "Applied", position: 1, is_terminal: false, is_protected: true },
+      { name: "Phone Screen", position: 2, is_terminal: false, is_protected: false },
+      { name: "Interview", position: 3, is_terminal: false, is_protected: false },
+      { name: "Offer", position: 4, is_terminal: false, is_protected: false },
+      { name: "Hired", position: 5, is_terminal: true, is_protected: true },
+      { name: "Rejected", position: 6, is_terminal: true, is_protected: true },
     ];
 
     const { error: stagesError } = await supabaseAdmin
