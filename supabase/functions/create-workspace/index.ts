@@ -185,11 +185,18 @@ serve(async (req) => {
         trial_ends_at: trialEndsAt,
       });
 
-    if (subError) {
-      console.error("Subscription creation failed (non-fatal):", subError);
+    if (subError) throw subError;
+
+    // 5b. Seed workspace usage row (trigger only fires on first candidate insert)
+    const { error: usageError } = await supabaseAdmin
+      .from("workspace_usage")
+      .insert({ workspace_id: workspace.id, candidate_count: 0 });
+
+    if (usageError) {
+      console.error("Usage seeding failed (non-fatal):", usageError);
     }
 
-    // 5b. Cancel onboarding nudges
+    // 5c. Cancel onboarding nudges
     try {
       await supabaseAdmin.rpc("cancel_onboarding_nudges", {
         p_user_id: user.id,

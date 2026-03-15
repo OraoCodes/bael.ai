@@ -15,10 +15,10 @@ CREATE TABLE IF NOT EXISTS public.subscription_plans (
 );
 
 -- Seed plans
-INSERT INTO public.subscription_plans (id, name, price_cents, candidate_limit, team_member_limit, features, position) VALUES
-  ('starter',    'Starter',    4900,  50,   3,    '{"ai_matching":true,"ai_search":true,"gmail_integration":true,"linkedin_integration":true,"telegram_integration":true,"advanced_analytics":false,"custom_pipeline":true,"public_board":true,"api_access":false}', 1),
-  ('pro',        'Pro',        9900,  100,  10,   '{"ai_matching":true,"ai_search":true,"gmail_integration":true,"linkedin_integration":true,"telegram_integration":true,"advanced_analytics":false,"custom_pipeline":true,"public_board":true,"api_access":false}', 2),
-  ('enterprise', 'Enterprise', 20000, NULL, NULL, '{"ai_matching":true,"ai_search":true,"gmail_integration":true,"linkedin_integration":true,"telegram_integration":true,"advanced_analytics":true,"custom_pipeline":true,"public_board":true,"api_access":true}', 3)
+INSERT INTO public.subscription_plans (id, name, price_cents, candidate_limit, team_member_limit, features, position, stripe_price_id) VALUES
+  ('starter',    'Starter',    4900,  50,   3,    '{"ai_matching":true,"ai_search":true,"gmail_integration":true,"linkedin_integration":true,"telegram_integration":true,"advanced_analytics":false,"custom_pipeline":true,"public_board":true,"api_access":false}', 1, 'price_1TAwg0AsRwGVbyYqdFyuQ6wO'),
+  ('pro',        'Pro',        9900,  100,  10,   '{"ai_matching":true,"ai_search":true,"gmail_integration":true,"linkedin_integration":true,"telegram_integration":true,"advanced_analytics":false,"custom_pipeline":true,"public_board":true,"api_access":false}', 2, 'price_1TAwgOAsRwGVbyYq26VqSPDb'),
+  ('enterprise', 'Enterprise', 19900, NULL, NULL, '{"ai_matching":true,"ai_search":true,"gmail_integration":true,"linkedin_integration":true,"telegram_integration":true,"advanced_analytics":true,"custom_pipeline":true,"public_board":true,"api_access":true}', 3, 'price_1TAwgwAsRwGVbyYqLYHnPEdx')
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── Workspace Subscriptions ──────────────────────────────────────────────────
