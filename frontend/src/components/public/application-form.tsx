@@ -57,7 +57,6 @@ const baseSchema = z.object({
   phone: z.string().optional(),
   cover_letter: z.string().optional(),
   linkedin_url: z.string().optional(),
-  website: z.string().optional(), // honeypot
 })
 
 type FormValues = z.infer<typeof baseSchema> & Record<string, string | undefined>
@@ -76,6 +75,7 @@ export function ApplicationForm({
   const [error, setError] = useState<string | null>(null)
   const [consentGiven, setConsentGiven] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const honeypotRef = useRef<HTMLInputElement>(null)
 
   const config = applicationForm ?? { fields: [], require_phone: false, require_cover_letter: false, require_resume: true }
 
@@ -89,7 +89,6 @@ export function ApplicationForm({
       phone: '',
       cover_letter: '',
       linkedin_url: '',
-      website: '',
     },
   })
 
@@ -109,8 +108,8 @@ export function ApplicationForm({
   }
 
   const onSubmit = async (values: FormValues) => {
-    // Honeypot check
-    if (values.website) return
+    // Honeypot check — use ref so browser autofill of the "website" field never silently blocks real submissions
+    if (honeypotRef.current?.value) return
 
     if (!consentGiven) {
       setError('You must accept the data protection terms before submitting')
@@ -143,7 +142,6 @@ export function ApplicationForm({
       if (values.phone) formData.append('phone', values.phone)
       if (values.linkedin_url) formData.append('linkedin_url', values.linkedin_url)
       if (values.cover_letter) formData.append('cover_letter', values.cover_letter)
-      if (values.website) formData.append('website', values.website) // honeypot
       formData.append('consent_given', 'true')
       formData.append('consent_policy_version', '1.0')
       if (resumeFile) formData.append('resume', resumeFile)
@@ -223,9 +221,9 @@ export function ApplicationForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 overflow-hidden">
-        {/* Honeypot — hidden from humans */}
+        {/* Honeypot — hidden from humans, not registered with RHF to avoid autofill false-positives */}
         <div className="absolute -left-[9999px]" aria-hidden="true">
-          <input {...form.register('website')} tabIndex={-1} autoComplete="off" />
+          <input ref={honeypotRef} type="text" name="hp_url" tabIndex={-1} autoComplete="nope" />
         </div>
 
         {/* Name */}

@@ -182,6 +182,8 @@ serve(async (req) => {
 
     const prompt = `You are a recruitment AI assistant. Score each candidate's fit for the following job on a scale of 0.0 to 1.0, and provide a brief reasoning (2-3 sentences max).
 
+IMPORTANT: Write the reasoning in second person, addressed directly to the candidate (use "your", "you"). It should read naturally as polite, professional feedback the candidate could receive — acknowledging their strengths before explaining the gap. Do not refer to the candidate by name or in third person.
+
 ## Job
 Title: ${job.title}
 Department: ${job.department || "N/A"}

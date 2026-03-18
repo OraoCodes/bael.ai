@@ -652,12 +652,14 @@ serve(async (req) => {
       },
     });
 
-    // ── AI: Auto-score candidate against job (non-blocking) ────────────────
-    let aiMatchScore = null;
+    // ── AI: Auto-score candidate against job (truly non-blocking) ──────────
+    // Return success immediately — scoring runs in the background.
     if (aiData) {
-      try {
-        const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-        if (apiKey) {
+      const scoreTask = (async () => {
+        try {
+          const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+          if (!apiKey) return;
+
           const skills = aiData.skills?.join(", ") || "";
           const experience = aiData.experience
             ?.map((e: ExperienceEntry) => `${e.title} at ${e.company}`)
@@ -665,11 +667,12 @@ serve(async (req) => {
 
           const scorePrompt = `You are a recruitment AI. Score this candidate's fit for the job on a scale of 0.0 to 1.0 with brief reasoning (2-3 sentences).
 
+IMPORTANT: Write the reasoning in second person, addressed directly to the candidate (use "your", "you"). It should read naturally as polite, professional feedback — acknowledge their strengths before explaining the gap. Do not refer to the candidate by name or in third person.
+
 Job: ${job.title}
 Description: ${job.description || "No description"}
 
-Candidate: ${firstName} ${lastName}
-Summary: ${aiData.summary || "N/A"}
+Candidate Summary: ${aiData.summary || "N/A"}
 Skills: ${skills}
 Experience: ${experience}
 Total years: ${aiData.total_years_experience || "unknown"}
@@ -702,21 +705,24 @@ Respond with ONLY JSON: {"score": 0.85, "reasoning": "..."}`;
               scoreText = scoreText.slice(objStart, objEnd + 1);
             }
             const parsed = JSON.parse(scoreText);
-            aiMatchScore = {
-              score: parsed.score,
-              reasoning: parsed.reasoning,
-              computed_at: new Date().toISOString(),
-            };
-
             await supabase
               .from("candidate_applications")
-              .update({ ai_match_score: aiMatchScore })
+              .update({
+                ai_match_score: {
+                  score: parsed.score,
+                  reasoning: parsed.reasoning,
+                  computed_at: new Date().toISOString(),
+                },
+              })
               .eq("id", application.id);
           }
+        } catch (scoreErr) {
+          console.error("Auto-scoring failed (non-fatal):", scoreErr);
         }
-      } catch (scoreErr) {
-        console.error("Auto-scoring failed (non-fatal):", scoreErr);
-      }
+      })();
+
+      // Register with the runtime so it completes even after the response is sent
+      EdgeRuntime.waitUntil(scoreTask);
     }
 
     return json({
@@ -724,7 +730,6 @@ Respond with ONLY JSON: {"score": 0.85, "reasoning": "..."}`;
       application_id: application.id,
       message: "Application submitted successfully",
       ai_parsed: aiData !== null,
-      ai_match_score: aiMatchScore,
     }, 201);
   } catch (error) {
     console.error("submit-application error:", error);
