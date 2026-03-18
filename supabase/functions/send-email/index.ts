@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { sendEmail, buildInviteEmail } from "../_shared/email.ts";
+import { sendEmail, buildInviteEmail, buildRejectionEmail } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -122,6 +122,73 @@ serve(async (req) => {
         });
 
         await sendEmail({ to: invitation.email, subject, html });
+
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "rejection": {
+        const { application_id, workspace_id } = body;
+        if (!application_id || !workspace_id) {
+          return new Response(
+            JSON.stringify({ error: "application_id and workspace_id are required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Verify caller is a workspace member with write access
+        const { data: membership } = await supabaseAdmin
+          .from("workspace_memberships")
+          .select("role")
+          .eq("workspace_id", workspace_id)
+          .eq("user_id", user.id)
+          .single();
+
+        if (!membership || !["owner", "admin", "recruiter"].includes(membership.role)) {
+          return new Response(
+            JSON.stringify({ error: "Insufficient permissions" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Fetch application with candidate, job, and workspace in one go
+        const { data: application, error: appErr } = await supabaseAdmin
+          .from("candidate_applications")
+          .select("rejection_reason, candidates(first_name, last_name, email), jobs(title), workspaces(name)")
+          .eq("id", application_id)
+          .eq("workspace_id", workspace_id)
+          .single();
+
+        if (appErr || !application) {
+          return new Response(
+            JSON.stringify({ error: "Application not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const candidate = application.candidates as { first_name: string; last_name: string; email: string };
+        const job = application.jobs as { title: string };
+        const workspace = application.workspaces as { name: string };
+
+        if (!candidate?.email) {
+          return new Response(
+            JSON.stringify({ error: "Candidate has no email address" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const candidateName = [candidate.first_name, candidate.last_name].filter(Boolean).join(" ") || "there";
+
+        const { subject, html } = buildRejectionEmail({
+          candidateName,
+          jobTitle: job.title,
+          workspaceName: workspace.name,
+          reason: application.rejection_reason ?? undefined,
+        });
+
+        await sendEmail({ to: candidate.email, subject, html });
 
         return new Response(JSON.stringify({ success: true }), {
           status: 200,

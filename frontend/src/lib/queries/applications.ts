@@ -86,14 +86,19 @@ export function useMoveApplication() {
       applicationId,
       newStageId,
       jobId,
+      rejectionReason,
     }: {
       applicationId: string
       newStageId: string
       jobId: string
+      rejectionReason?: string
     }) => {
+      const update: Record<string, unknown> = { stage_id: newStageId }
+      if (rejectionReason !== undefined) update.rejection_reason = rejectionReason
+
       const { data, error } = await supabase
         .from('candidate_applications')
-        .update({ stage_id: newStageId })
+        .update(update)
         .eq('id', applicationId)
         .eq('workspace_id', workspaceId)
         .select()

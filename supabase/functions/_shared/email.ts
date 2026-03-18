@@ -319,6 +319,56 @@ export function buildOnboardingNudgeEmail(params: OnboardingNudgeParams) {
   return { subject: v.subject, html };
 }
 
+interface RejectionEmailParams {
+  candidateName: string;
+  jobTitle: string;
+  workspaceName: string;
+  reason?: string;
+}
+
+export function buildRejectionEmail(params: RejectionEmailParams) {
+  const subject = `Your application for ${params.jobTitle} at ${params.workspaceName}`;
+  const reasonBlock = params.reason
+    ? `<p style="margin:16px 0 0;color:#3f3f46;font-size:15px;line-height:1.6">${params.reason}</p>`
+    : "";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 20px">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
+        <tr><td style="padding:36px 40px">
+          <p style="margin:0 0 24px;font-size:22px;font-weight:700;color:#18181b">${params.workspaceName}</p>
+          <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b">Application Update</h1>
+          <p style="margin:0;color:#3f3f46;font-size:15px;line-height:1.6">
+            Hi ${params.candidateName},
+          </p>
+          <p style="margin:12px 0 0;color:#3f3f46;font-size:15px;line-height:1.6">
+            Thank you for your interest in the <strong>${params.jobTitle}</strong> position at <strong>${params.workspaceName}</strong>.
+            After careful consideration, we have decided to move forward with other candidates at this time.
+          </p>
+          ${reasonBlock}
+          <p style="margin:16px 0 0;color:#3f3f46;font-size:15px;line-height:1.6">
+            We appreciate the time you invested in this process and wish you the best in your job search.
+          </p>
+          <p style="margin:24px 0 0;color:#3f3f46;font-size:15px;line-height:1.6">
+            Warm regards,<br>
+            <strong>${params.workspaceName}</strong>
+          </p>
+        </td></tr>
+      </table>
+      <p style="margin:24px 0 0;color:#a1a1aa;font-size:11px;text-align:center">Powered by Bael — Recruitment CRM</p>
+    </td></tr>
+  </table>
+</body>
+</html>`.trim();
+
+  return { subject, html };
+}
+
 interface FollowUpEmailParams {
   candidateName: string;
   subject: string;
