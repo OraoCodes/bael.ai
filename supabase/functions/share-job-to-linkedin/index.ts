@@ -71,7 +71,7 @@ serve(async (req) => {
     const { data: job } = await supabaseAdmin
       .from("jobs")
       .select(
-        "id, title, description, location, employment_type, workplace_type, seniority_level, skills, slug, status"
+        "id, title, description, location, employment_type, workplace_type, seniority_level, skills, slug, status, linkedin_image_url"
       )
       .eq("id", job_id)
       .eq("workspace_id", workspace_id)
@@ -155,20 +155,17 @@ serve(async (req) => {
       return str.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     }
 
-    // Build post commentary — compact single-line-break format so
-    // all key info is visible in LinkedIn feed without needing "see more"
+    // Build detail lines — one per line, trailing " ·" on all but the last
     const detailParts = [
-      job.location          ? `📍 ${job.location}` : null,
-      job.employment_type   ? `💼 ${titleCase(job.employment_type)}` : null,
-      job.workplace_type    ? `🏢 ${titleCase(job.workplace_type)}` : null,
-      job.seniority_level   ? `📊 ${titleCase(job.seniority_level)} level` : null,
-    ].filter(Boolean);
+      job.location        ? `📍 ${job.location}` : null,
+      job.employment_type ? `💼 ${titleCase(job.employment_type)}` : null,
+      job.workplace_type  ? `🏢 ${titleCase(job.workplace_type)}` : null,
+      job.seniority_level ? `📊 ${titleCase(job.seniority_level)} level` : null,
+    ].filter(Boolean) as string[];
 
-    const detailsLine = detailParts.length ? detailParts.join("  ·  ") : null;
-
-    const skillsLine = job.skills?.length
-      ? `🔧 ${job.skills.slice(0, 6).join(" · ")}`
-      : null;
+    const detailLines = detailParts
+      .map((part, i) => i < detailParts.length - 1 ? `${part} ·` : part)
+      .join("\n");
 
     // Job title → CamelCase hashtag, e.g. "Senior DevOps Engineer" → #SeniorDevOpsEngineer
     const titleHashtag = `#${job.title
@@ -184,55 +181,138 @@ serve(async (req) => {
 
     const hashtags = `#Hiring #OpenToWork ${titleHashtag} ${skillHashtags}`.trim();
 
-    // Single \n — no blank lines — so LinkedIn feed shows all sections without "see more"
-    const commentary = [
-      `🚀 ${toBold(`We're hiring: ${job.title}!`)}`,
-      detailsLine,
-      skillsLine,
-      `👉 ${toBold("Apply now")} — link in card below`,
-      hashtags,
-    ].filter(Boolean).join("\n").trim();
+    // Helper to assemble commentary with consistent spacing:
+    // title → details → [blank] → apply line → [blank] → hashtags
+    function buildCommentary(applyLine: string): string {
+      return [
+        `🚀 ${toBold(`We're hiring: ${job.title}!`)}`,
+        detailLines || null,
+        "",
+        applyLine,
+        "",
+        hashtags,
+      ].filter((line) => line !== null).join("\n").trim();
+    }
 
-    // Link card description: first 200 chars of job description or a fallback
-    const cardDescription = job.description
-      ? job.description.replace(/\n/g, " ").trim().slice(0, 200)
-      : `Join ${ws?.name || "our team"} as a ${job.title}. Apply now on bael.ai.`;
+    // ── Build post content: image post OR article link card ──────────────────
+    // If the job has a linkedin_image_url, upload it to LinkedIn and post as
+    // a media/image post (full image visible in feed, URL in commentary text).
+    // Otherwise fall back to the article link card (auto OG image + clickable card).
 
-    const cardTitle = ws?.name
-      ? `${job.title} at ${ws.name}`
-      : job.title;
+    let postContent: Record<string, unknown>;
 
-    // Call LinkedIn Posts API
-    const linkedinRes = await fetch(
-      "https://api.linkedin.com/rest/posts",
-      {
-        method: "POST",
+    if (job.linkedin_image_url) {
+      // Step 1: Initialize image upload with LinkedIn
+      const initRes = await fetch(
+        "https://api.linkedin.com/rest/images?action=initializeUpload",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${linkedinLink.access_token}`,
+            "Content-Type": "application/json",
+            "LinkedIn-Version": "202601",
+            "X-Restli-Protocol-Version": "2.0.0",
+          },
+          body: JSON.stringify({
+            initializeUploadRequest: {
+              owner: linkedinLink.linkedin_profile_id,
+            },
+          }),
+        }
+      );
+
+      if (!initRes.ok) {
+        const err = await initRes.text();
+        console.error("LinkedIn image init failed:", err);
+        return new Response(
+          JSON.stringify({ error: "Failed to initialize LinkedIn image upload" }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { value: { uploadUrl, image: imageUrn } } = await initRes.json();
+
+      // Step 2: Fetch the image from Supabase Storage and upload to LinkedIn
+      const imgRes = await fetch(job.linkedin_image_url);
+      if (!imgRes.ok) {
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch job image from storage" }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const imgBuffer = await imgRes.arrayBuffer();
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
         headers: {
           Authorization: `Bearer ${linkedinLink.access_token}`,
-          "Content-Type": "application/json",
-          "LinkedIn-Version": "202601",
-          "X-Restli-Protocol-Version": "2.0.0",
+          "Content-Type": imgRes.headers.get("content-type") || "image/jpeg",
         },
-        body: JSON.stringify({
-          author: linkedinLink.linkedin_profile_id,
-          commentary,
-          visibility: "PUBLIC",
-          distribution: {
-            feedDistribution: "MAIN_FEED",
-            targetEntities: [],
-            thirdPartyDistributionChannels: [],
-          },
-          content: {
-            article: {
-              source: publicUrl,
-              title: cardTitle,
-              description: cardDescription,
-            },
-          },
-          lifecycleState: "PUBLISHED",
-        }),
+        body: imgBuffer,
+      });
+
+      if (!uploadRes.ok) {
+        console.error("LinkedIn image upload failed:", await uploadRes.text());
+        return new Response(
+          JSON.stringify({ error: "Failed to upload image to LinkedIn" }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-    );
+
+      // Image post — URL embedded in text since there's no link card
+      postContent = {
+        author: linkedinLink.linkedin_profile_id,
+        commentary: buildCommentary(`👉 ${toBold("Apply now")} → ${publicUrl}`),
+        visibility: "PUBLIC",
+        distribution: {
+          feedDistribution: "MAIN_FEED",
+          targetEntities: [],
+          thirdPartyDistributionChannels: [],
+        },
+        content: {
+          media: { id: imageUrn },
+        },
+        lifecycleState: "PUBLISHED",
+      };
+    } else {
+      // Article link card — LinkedIn auto-pulls OG image from the job URL
+      const cardDescription = job.description
+        ? job.description.replace(/\n/g, " ").trim().slice(0, 200)
+        : `Join ${ws?.name || "our team"} as a ${job.title}. Apply now on bael.ai.`;
+
+      const cardTitle = ws?.name ? `${job.title} at ${ws.name}` : job.title;
+
+      postContent = {
+        author: linkedinLink.linkedin_profile_id,
+        commentary: buildCommentary(`👉 ${toBold("Apply now")} — link in card below`),
+        visibility: "PUBLIC",
+        distribution: {
+          feedDistribution: "MAIN_FEED",
+          targetEntities: [],
+          thirdPartyDistributionChannels: [],
+        },
+        content: {
+          article: {
+            source: publicUrl,
+            title: cardTitle,
+            description: cardDescription,
+          },
+        },
+        lifecycleState: "PUBLISHED",
+      };
+    }
+
+    // Call LinkedIn Posts API
+    const linkedinRes = await fetch("https://api.linkedin.com/rest/posts", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${linkedinLink.access_token}`,
+        "Content-Type": "application/json",
+        "LinkedIn-Version": "202601",
+        "X-Restli-Protocol-Version": "2.0.0",
+      },
+      body: JSON.stringify(postContent),
+    });
 
     if (!linkedinRes.ok) {
       const errBody = await linkedinRes.text();

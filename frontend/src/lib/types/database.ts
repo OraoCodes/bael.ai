@@ -125,6 +125,7 @@ export interface Job {
   job_function: string | null
   expires_at: string | null
   slug: string | null
+  linkedin_image_url: string | null
   application_form: ApplicationFormConfig
   source_type: string
   created_by: string

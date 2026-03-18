@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { format } from 'date-fns'
-import { CalendarIcon } from 'lucide-react'
+import { CalendarIcon, ImagePlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -35,6 +35,8 @@ import { ApplicationFormBuilder } from '@/components/jobs/application-form-build
 import type { Job, ApplicationFormConfig } from '@/lib/types/database'
 import { EMPLOYMENT_TYPES, SENIORITY_LEVELS, WORKPLACE_TYPES, JOB_FUNCTIONS } from '@/lib/utils/constants'
 import { useMembers } from '@/lib/queries/team'
+import { useWorkspace } from '@/components/providers/workspace-provider'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
 const JOB_STATUSES = [
@@ -85,10 +87,44 @@ export function JobForm({
   loading,
   submitLabel = 'Save',
 }: JobFormProps) {
+  const { workspaceId } = useWorkspace()
+  const supabase = createClient()
   const { data: members } = useMembers()
   const [applicationForm, setApplicationForm] = useState<ApplicationFormConfig>(
     initialValues?.application_form ?? DEFAULT_APP_FORM
   )
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(initialValues?.linkedin_image_url ?? null)
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imagePath, setImagePath] = useState<string | null>(
+    initialValues?.linkedin_image_url ? new URL(initialValues.linkedin_image_url).pathname.split('/object/public/job-images/')[1] ?? null : null
+  )
+
+  const handleImageUpload = async (file: File) => {
+    setImageUploading(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${workspaceId}/${initialValues?.id ?? 'new'}/linkedin-image.${ext}`
+      const { error } = await supabase.storage.from('job-images').upload(path, file, { upsert: true })
+      if (error) throw error
+      const { data: { publicUrl } } = supabase.storage.from('job-images').getPublicUrl(path)
+      setImagePreview(publicUrl)
+      setImagePath(path)
+    } catch (err) {
+      console.error('Image upload failed:', err)
+    } finally {
+      setImageUploading(false)
+    }
+  }
+
+  const handleRemoveImage = async () => {
+    if (imagePath) {
+      await supabase.storage.from('job-images').remove([imagePath])
+    }
+    setImagePreview(null)
+    setImagePath(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -123,6 +159,7 @@ export function JobForm({
       salary_max: values.salary_max ? Number(values.salary_max) : undefined,
       assigned_to: values.assigned_to || undefined,
       expires_at: values.expires_at || undefined,
+      linkedin_image_url: imagePreview ?? undefined,
       application_form: applicationForm,
     } as Partial<Job>)
   }
@@ -439,6 +476,47 @@ export function JobForm({
             render={({ field }) => (
               <SkillTagInput value={field.value ?? []} onChange={field.onChange} />
             )}
+          />
+        </div>
+
+        {/* LinkedIn image upload */}
+        <div className="space-y-2">
+          <FormLabel>LinkedIn Post Image <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+          <p className="text-xs text-muted-foreground">
+            When set, LinkedIn posts use a full image instead of the auto-generated link card. Max 5 MB — JPEG, PNG, or WebP.
+          </p>
+          {imagePreview ? (
+            <div className="relative w-full max-w-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imagePreview} alt="LinkedIn post image" className="rounded-md border w-full object-cover max-h-48" />
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={imageUploading}
+              className="flex items-center gap-2 rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+            >
+              <ImagePlus className="h-4 w-4" />
+              {imageUploading ? 'Uploading…' : 'Upload image'}
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleImageUpload(file)
+            }}
           />
         </div>
 
